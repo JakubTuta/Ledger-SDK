@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 
@@ -33,7 +33,7 @@ class HTTPClient:
         self,
         path: str,
         json_data: dict[str, Any],
-        headers: Optional[dict[str, str]] = None,
+        headers: dict[str, str] | None = None,
     ) -> httpx.Response:
         merged_headers = self._client.headers.copy()
         if headers:
@@ -49,8 +49,8 @@ class HTTPClient:
     async def get(
         self,
         path: str,
-        params: Optional[dict[str, Any]] = None,
-        headers: Optional[dict[str, str]] = None,
+        params: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
     ) -> httpx.Response:
         merged_headers = self._client.headers.copy()
         if headers:

@@ -1,6 +1,6 @@
 import traceback
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 import ledger.core.buffer as buffer_module
 import ledger.core.flusher as flusher_module
@@ -118,7 +118,7 @@ class LedgerClient:
     def log_info(
         self,
         message: str,
-        attributes: Optional[dict[str, Any]] = None,
+        attributes: dict[str, Any] | None = None,
     ) -> None:
         self._log(
             level="info",
@@ -131,7 +131,7 @@ class LedgerClient:
     def log_error(
         self,
         message: str,
-        attributes: Optional[dict[str, Any]] = None,
+        attributes: dict[str, Any] | None = None,
     ) -> None:
         self._log(
             level="error",
@@ -144,8 +144,8 @@ class LedgerClient:
     def log_exception(
         self,
         exception: Exception,
-        message: Optional[str] = None,
-        attributes: Optional[dict[str, Any]] = None,
+        message: str | None = None,
+        attributes: dict[str, Any] | None = None,
     ) -> None:
         stack_trace = "".join(
             traceback.format_exception(
@@ -171,11 +171,11 @@ class LedgerClient:
         level: str,
         log_type: str,
         importance: str,
-        message: Optional[str] = None,
-        error_type: Optional[str] = None,
-        error_message: Optional[str] = None,
-        stack_trace: Optional[str] = None,
-        attributes: Optional[dict[str, Any]] = None,
+        message: str | None = None,
+        error_type: str | None = None,
+        error_message: str | None = None,
+        stack_trace: str | None = None,
+        attributes: dict[str, Any] | None = None,
     ) -> None:
         from ledger._version import __version__
 
