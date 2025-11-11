@@ -60,28 +60,13 @@ async def shutdown():
     await ledger.shutdown()
 ```
 
-That's it! All requests are now automatically logged to Ledger.
-
 ## Features
-
-### Core Features
 
 - Automatic request/response logging via middleware
 - Automatic exception capture with full stack traces
-- Non-blocking async operation (<0.1ms overhead)
+- Non-blocking async operation
 - Intelligent batching and buffering (every 5s or 1000 logs)
 - Dual rate limiting (per-minute and per-hour)
-
-### Production Features
-
-- Circuit breaker pattern (5 failure threshold, 60s timeout)
-- Exponential backoff retry logic (max 3 retries)
-- Comprehensive metrics and monitoring
-- Health checks and diagnostics
-- Configuration validation on startup
-- Enhanced validation with detailed warnings
-- Structured logging to stderr
-- Graceful shutdown with connection draining
 
 ## Usage Examples
 
@@ -133,72 +118,6 @@ async def get_user(user_id: int):
 @app.on_event("shutdown")
 async def shutdown():
     await ledger.shutdown()
-```
-
-### Flask Integration (Coming Soon)
-
-```python
-from flask import Flask
-from ledger import LedgerClient
-from ledger.integrations.flask import LedgerMiddleware
-
-app = Flask(__name__)
-ledger = LedgerClient(api_key="ldg_proj_1_your_api_key")
-
-app.wsgi_app = LedgerMiddleware(app.wsgi_app, ledger_client=ledger)
-
-@app.route("/")
-def index():
-    ledger.log_info("Homepage visited")
-    return {"message": "Hello World"}
-```
-
-### Django Integration (Coming Soon)
-
-```python
-# settings.py
-MIDDLEWARE = [
-    'ledger.integrations.django.LedgerMiddleware',
-    # ... other middleware
-]
-
-LEDGER_CONFIG = {
-    'api_key': 'ldg_proj_1_your_api_key',
-    'base_url': 'https://api.ledger.example.com',
-}
-
-# views.py
-from ledger import get_ledger_client
-
-def my_view(request):
-    ledger = get_ledger_client()
-    ledger.log_info("View accessed", attributes={"path": request.path})
-    return HttpResponse("Hello World")
-```
-
-### Background Workers (Celery/RQ)
-
-```python
-from celery import Celery
-from ledger import LedgerClient
-
-app = Celery('tasks')
-ledger = LedgerClient(
-    api_key="ldg_proj_1_your_api_key",
-    flush_interval=30.0,
-    flush_size=1000
-)
-
-@app.task
-def process_payment(payment_id):
-    ledger.log_info(f"Processing payment {payment_id}", attributes={"payment_id": payment_id})
-
-    try:
-        # Process payment logic
-        ledger.log_info(f"Payment {payment_id} processed successfully")
-    except Exception as e:
-        ledger.log_exception(e, message=f"Payment {payment_id} failed")
-        raise
 ```
 
 ## Advanced Configuration
@@ -481,65 +400,12 @@ spec:
 ## Documentation
 
 - **[CHANGELOG.md](CHANGELOG.md)** - Version history and release notes
-- **[MIGRATION_GUIDE.md](MIGRATION_GUIDE.md)** - Migration from old structure
 - [Architecture](../sdk_overview/ARCHITECTURE.md) - System design and data flow
 - [Components](../sdk_overview/COMPONENTS.md) - Internal component details
 - [FastAPI Integration](../sdk_overview/FASTAPI_INTEGRATION.md) - FastAPI middleware guide
 - [Performance](../sdk_overview/PERFORMANCE.md) - Performance tuning guide
 - [Error Handling](../sdk_overview/ERROR_HANDLING.md) - Error handling strategies
 - [Configuration](../sdk_overview/CONFIGURATION.md) - Full configuration reference
-
-## Troubleshooting
-
-### High Buffer Utilization
-
-**Symptom**: Buffer utilization >90%
-
-**Cause**: Logs not being sent fast enough
-
-**Solution**:
-
-- Check network connectivity to Ledger server
-- Increase `flush_interval` to flush more frequently
-- Reduce traffic or increase rate limits
-
-### Circuit Breaker Open
-
-**Symptom**: `circuit_breaker_open: true` in health status
-
-**Cause**: Too many consecutive failures (5+)
-
-**Solution**:
-
-- Check Ledger server health and availability
-- Verify API key is valid
-- Check network connectivity
-- Review stderr logs for error details
-
-### Logs Not Appearing
-
-**Symptom**: Logs not showing up in Ledger
-
-**Solution**:
-
-1. Check API key is valid and starts with `ldg_`
-2. Verify `base_url` is correct
-3. Check network connectivity
-4. Enable debug logging to stderr
-5. Check metrics: `ledger.get_metrics()`
-
-### Memory Usage Growing
-
-**Symptom**: Application memory increasing over time
-
-**Cause**: Buffer not being flushed
-
-**Solution**:
-
-- Check background flusher is running
-- Verify network connectivity
-- Check for rate limiting (429 errors)
-- Reduce `max_buffer_size` if needed
 
 ## Support
 
@@ -552,74 +418,6 @@ spec:
 - **PyPI**: https://pypi.org/project/ledger-sdk/
 - **GitHub**: https://github.com/JakubTuta/ledger-sdk
 - **Documentation**: https://docs.ledger.example.com
-- **Homepage**: https://ledger.example.com
-
-## Contributing
-
-Contributions are welcome! Please read our contributing guidelines before submitting PRs.
-
-## FAQ
-
-### Is the SDK thread-safe?
-
-Yes, all operations are thread-safe and async-safe.
-
-### What happens if the Ledger server is down?
-
-The SDK will buffer logs in memory (up to `max_buffer_size`) and retry with exponential backoff. After 5 consecutive failures, the circuit breaker opens and stops sending requests for 60 seconds before retrying.
-
-### Will the SDK slow down my application?
-
-No. The middleware adds <0.1ms overhead per request. All network I/O happens asynchronously in a background task.
-
-### How do I rotate API keys?
-
-Update the environment variable and restart your application. The SDK validates the API key format on initialization.
-
-### Can I use this with sync frameworks (Flask, Django)?
-
-Flask and Django support is planned for v1.1. Currently only FastAPI (async) is supported.
-
-### What Python versions are supported?
-
-Python 3.10, 3.11, and 3.12 are officially supported and tested in CI.
-
-### How much memory does the SDK use?
-
-Approximately 8-12MB with default settings (10,000 log buffer). Memory usage scales with `max_buffer_size`.
-
-### Can I customize the log format?
-
-Yes, use the `attributes` parameter to add custom fields:
-
-```python
-ledger.log_info("User action", attributes={"user_id": 123, "action": "login"})
-```
-
-### How do I test locally without a Ledger server?
-
-Run the Ledger server locally and use the setup script:
-
-```bash
-python scripts/setup_test_account.py
-```
-
-## Changelog
-
-### v1.0.0 (2024-11-10)
-
-**Production Release**
-
-- Circuit breaker pattern (5 failure threshold, 60s timeout)
-- Exponential backoff retry logic (max 3 retries)
-- Dual rate limiting (per-minute and per-hour)
-- Comprehensive metrics and health checks
-- Configuration validation on startup
-- Enhanced validation with warnings
-- Graceful shutdown with connection draining
-- FastAPI middleware integration
-- Automatic exception capture
-- Non-blocking async operation
 
 ## License
 
