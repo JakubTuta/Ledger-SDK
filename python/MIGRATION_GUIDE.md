@@ -91,13 +91,13 @@ from ledger.integrations.fastapi import LedgerMiddleware
 ## Installation
 
 ### For Development
-```bash
+```powershell
 cd python
 pip install -e ".[dev]"
 ```
 
 ### For Users (after PyPI publication)
-```bash
+```powershell
 # Core SDK only
 pip install ledger-sdk
 
@@ -117,7 +117,7 @@ pip install ledger-sdk[all]
 4. CHANGELOG.md updated
 
 ### Build and Test
-```bash
+```powershell
 cd python
 
 # Install build tools
@@ -134,7 +134,7 @@ twine upload --repository testpypi dist/*
 ```
 
 ### Publish to PyPI
-```bash
+```powershell
 # Upload to PyPI
 twine upload dist/*
 ```
@@ -143,7 +143,7 @@ Or use GitHub Actions by creating a release on GitHub.
 
 ## Running Tests
 
-```bash
+```powershell
 cd python
 
 # Install with dev dependencies
@@ -166,16 +166,16 @@ pytest -m integration
 
 The old `fastapi/` directory should be removed after verifying the new structure works:
 
-```bash
+```powershell
 cd python
-rm -rf fastapi/
+Remove-Item -Recurse -Force fastapi/
 ```
 
 ## Troubleshooting
 
 ### Import errors
 If you get import errors, make sure you've installed in editable mode:
-```bash
+```powershell
 pip install -e ".[dev]"
 ```
 
@@ -184,7 +184,7 @@ Make sure you're in the `python/` directory and have dev dependencies installed.
 
 ### Build errors
 Ensure you have the latest setuptools:
-```bash
+```powershell
 pip install --upgrade setuptools wheel build
 ```
 

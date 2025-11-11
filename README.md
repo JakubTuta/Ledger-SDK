@@ -34,9 +34,6 @@ Modern applications span multiple languages and frameworks. Ledger SDKs provide 
 - **Python SDK** - Flask integration (v1.1)
 - **Python SDK** - Django integration (v1.2)
 - **Node.js SDK** - Express, Fastify, NestJS
-- **Go SDK** - net/http, Gin, Echo
-- **Java SDK** - Spring Boot, Micronaut
-- **Ruby SDK** - Rails, Sinatra
 
 ## Quick Start
 
@@ -64,8 +61,6 @@ app.add_middleware(LedgerMiddleware, ledger_client=ledger)
 async def shutdown():
     await ledger.shutdown()
 ```
-
-**That's it!** All requests are now automatically logged with zero performance impact.
 
 See [Python SDK Documentation](python/fastapi/) for complete guide.
 
@@ -131,143 +126,6 @@ See [Python SDK Documentation](python/fastapi/) for complete guide.
             └──────────────────────────────┘
 ```
 
-## Project Structure
-
-```
-ledger-sdk/
-├── python/fastapi/              # Python SDK (production-ready)
-│   ├── ledger/                  # Core SDK implementation
-│   │   ├── client.py            # Main LedgerClient
-│   │   ├── buffer.py            # Log buffer (FIFO queue)
-│   │   ├── flusher.py           # Background flusher
-│   │   ├── rate_limiter.py      # Dual-window rate limiter
-│   │   ├── validator.py         # Log validation
-│   │   ├── http_client.py       # HTTP client with pooling
-│   │   └── integrations/
-│   │       └── fastapi.py       # FastAPI middleware
-│   ├── examples/                # Example applications
-│   ├── scripts/                 # Setup and utility scripts
-│   ├── README.md                # Python SDK guide
-│   └── PRODUCTION_READY.md      # Production features doc
-│
-├── sdk_overview/                # SDK design documentation
-│   ├── ARCHITECTURE.md          # System architecture
-│   ├── COMPONENTS.md            # Component details
-│   ├── CONFIGURATION.md         # Configuration guide
-│   ├── ERROR_HANDLING.md        # Error handling strategies
-│   ├── PERFORMANCE.md           # Performance optimization
-│   └── FUTURE_ROADMAP.md        # Future development plans
-│
-├── server_overview/             # Server implementation docs
-│   └── ...                      # Server API reference
-│
-└── README.md                    # This file
-```
-
-## Getting Started
-
-### For SDK Users
-
-1. **Choose your language**: See [Python SDK](python/fastapi/) (more coming soon)
-2. **Install the SDK**: `pip install ledger-sdk`
-3. **Add one line**: Middleware integration
-4. **Deploy**: Zero configuration needed
-
-### For Contributors
-
-1. **Clone the repository**
-
-   ```bash
-   git clone https://github.com/JakubTuta/ledger-sdk.git
-   cd ledger-sdk
-   ```
-
-2. **Set up Python SDK**
-
-   ```bash
-   cd python/fastapi
-   pip install -r requirements.txt
-   python scripts/setup_test_account.py
-   python examples/basic_app.py
-   ```
-
-3. **Read the docs**
-   - [SDK Architecture](sdk_overview/ARCHITECTURE.md)
-   - [Component Design](sdk_overview/COMPONENTS.md)
-   - [Production Features](python/fastapi/PRODUCTION_READY.md)
-
-## Documentation
-
-### SDK Guides
-
-- **[Python SDK](python/fastapi/)** - Installation, usage, and API reference
-- **[Production Deployment](python/fastapi/PRODUCTION_READY.md)** - Production features and deployment guide
-- **[Setup Guide](python/fastapi/SETUP_GUIDE.md)** - Development setup instructions
-
-### Design Documentation
-
-- **[Architecture](sdk_overview/ARCHITECTURE.md)** - High-level system design
-- **[Components](sdk_overview/COMPONENTS.md)** - Component implementation details
-- **[FastAPI Integration](sdk_overview/FASTAPI_INTEGRATION.md)** - Middleware design
-- **[Performance](sdk_overview/PERFORMANCE.md)** - Performance optimization strategies
-- **[Error Handling](sdk_overview/ERROR_HANDLING.md)** - Retry and circuit breaker logic
-- **[Configuration](sdk_overview/CONFIGURATION.md)** - Configuration reference
-- **[Future Roadmap](sdk_overview/FUTURE_ROADMAP.md)** - Planned features
-
-### Server Documentation
-
-- **[Server Overview](server_overview/)** - Server implementation details
-
-## Use Cases
-
-### Web APIs (FastAPI, Express, Spring Boot)
-
-Automatic request/response logging with zero overhead:
-
-- Request duration tracking
-- HTTP status code monitoring
-- Exception capture with stack traces
-- Custom event logging
-
-### Microservices
-
-Consistent observability across your service mesh:
-
-- Distributed tracing (coming soon)
-- Correlation IDs (coming soon)
-- Service metrics aggregation
-- Cross-service error tracking
-
-### Background Workers (Celery, Sidekiq, Bull)
-
-Track long-running job execution:
-
-- Job start/completion logging
-- Progress tracking
-- Failure analysis with context
-- Performance monitoring
-
-### CLI Tools
-
-Capture execution logs and errors:
-
-- Command execution tracking
-- Error reporting
-- Performance metrics
-- User analytics
-
-## Performance Benchmarks
-
-### Python SDK (FastAPI)
-
-| Workload                   | Requests/sec | SDK Overhead | Memory Usage |
-| -------------------------- | ------------ | ------------ | ------------ |
-| Low volume (<100 req/s)    | 95           | <0.1ms       | ~1MB         |
-| Medium volume (~500 req/s) | 485          | <0.1ms       | ~5MB         |
-| High volume (>1000 req/s)  | 995          | <0.1ms       | ~10MB        |
-
-**Methodology**: FastAPI app with Ledger middleware vs without, measured over 60 seconds.
-
 ## Design Principles
 
 1. **Zero Overhead**: SDK operations never slow down your application
@@ -276,78 +134,6 @@ Capture execution logs and errors:
 4. **Observable**: Built-in metrics and health checks for debugging
 5. **Configurable**: Tune behavior for different workloads
 6. **Future-Proof**: Architecture designed for multi-language expansion
-
-## Roadmap
-
-### Phase 1: Python SDK ✅ Complete
-
-- [x] FastAPI integration (v1.0.0)
-- [ ] Flask integration (v1.1 - Q1 2025)
-- [ ] Django integration (v1.2 - Q1 2025)
-
-### Phase 2: Node.js SDK (Q2 2025)
-
-- [ ] Express middleware
-- [ ] Fastify plugin
-- [ ] NestJS module
-- [ ] Async/await support
-
-### Phase 3: Go SDK (Q2 2025)
-
-- [ ] net/http middleware
-- [ ] Gin middleware
-- [ ] Echo middleware
-- [ ] Goroutine-safe buffering
-
-### Phase 4: Additional Languages (Q3-Q4 2025)
-
-- [ ] Java SDK (Spring Boot, Micronaut)
-- [ ] Ruby SDK (Rails, Sinatra)
-- [ ] PHP SDK (Laravel, Symfony)
-- [ ] .NET SDK (ASP.NET Core)
-
-### Phase 5: Advanced Features (2025+)
-
-- [ ] Distributed tracing (OpenTelemetry integration)
-- [ ] Real-time streaming
-- [ ] Local disk persistence
-- [ ] Compression (gzip)
-- [ ] Custom exporters
-
-See [FUTURE_ROADMAP.md](sdk_overview/FUTURE_ROADMAP.md) for detailed plans.
-
-## Contributing
-
-We welcome contributions! Here's how you can help:
-
-### Current Priorities
-
-1. **Python SDK enhancements**
-
-   - Flask middleware
-   - Django middleware
-   - Additional testing
-
-2. **Node.js SDK development**
-
-   - Express middleware
-   - TypeScript support
-   - Jest testing
-
-3. **Documentation improvements**
-   - More examples
-   - Tutorial videos
-   - API reference docs
-
-### How to Contribute
-
-1. **Fork the repository**
-2. **Create a feature branch**: `git checkout -b feature/my-feature`
-3. **Make your changes**: Follow coding guidelines in [CLAUDE.md](CLAUDE.md)
-4. **Test thoroughly**: Integration tests against real Ledger server
-5. **Submit a pull request**: With clear description
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 ## Support
 
@@ -367,20 +153,6 @@ When reporting issues, include:
 - Minimal reproduction code
 - Expected vs actual behavior
 - SDK metrics output (if applicable)
-
-## Security
-
-### Reporting Security Issues
-
-Please report security vulnerabilities to security@ledger.example.com. Do not open public issues for security concerns.
-
-### Best Practices
-
-- Never commit API keys to version control
-- Use HTTPS in production
-- Rotate API keys regularly
-- Monitor SDK health and metrics
-- Review logs for sensitive data before sending
 
 ## License
 

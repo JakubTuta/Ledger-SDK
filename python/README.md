@@ -2,7 +2,7 @@
 
 **Production-ready observability SDK with zero-overhead logging for FastAPI, Flask, and Django applications.**
 
-[![Python Version](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![Python Version](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![PyPI Version](https://img.shields.io/badge/pypi-v1.0.0-blue.svg)](https://pypi.org/project/ledger-sdk/)
 [![Status](https://img.shields.io/badge/status-production--ready-brightgreen.svg)](CHANGELOG.md)
@@ -582,7 +582,7 @@ Flask and Django support is planned for v1.1. Currently only FastAPI (async) is 
 
 ### What Python versions are supported?
 
-Python 3.9, 3.10, 3.11, and 3.12 are officially supported and tested in CI.
+Python 3.10, 3.11, and 3.12 are officially supported and tested in CI.
 
 ### How much memory does the SDK use?
 
