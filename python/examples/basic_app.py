@@ -20,7 +20,7 @@ else:
 app = FastAPI(title="Ledger SDK Example")
 
 api_key = os.getenv("LEDGER_API_KEY")
-base_url = os.getenv("LEDGER_BASE_URL", "http://localhost:8000")
+base_url = os.getenv("LEDGER_BASE_URL")
 
 if not api_key:
     print("\n" + "=" * 60)
@@ -112,10 +112,12 @@ async def shutdown():
 if __name__ == "__main__":
     import uvicorn
 
+    from ledger.core.config import DEFAULT_CONFIG
+
     print("\n" + "=" * 60)
     print("Ledger SDK Example App")
     print("=" * 60)
-    print(f"Ledger Server:  {base_url}")
+    print(f"Ledger Server:  {base_url or DEFAULT_CONFIG.base_url}")
     print(
         f"API Key:        {api_key[:20]}..." if len(api_key) > 20 else f"API Key:        {api_key}"
     )

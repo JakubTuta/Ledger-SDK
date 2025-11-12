@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 import ledger.core.buffer as buffer_module
+import ledger.core.config as config_module
 import ledger.core.flusher as flusher_module
 import ledger.core.http_client as http_client_module
 import ledger.core.rate_limiter as rate_limiter_module
@@ -14,14 +15,23 @@ class LedgerClient:
     def __init__(
         self,
         api_key: str,
-        base_url: str = "http://localhost:8000",
-        flush_interval: float = 5.0,
-        flush_size: int = 100,
-        max_buffer_size: int = 10000,
-        http_timeout: float = 5.0,
-        http_pool_size: int = 10,
-        rate_limit_buffer: float = 0.9,
+        base_url: str | None = None,
+        flush_interval: float | None = None,
+        flush_size: int | None = None,
+        max_buffer_size: int | None = None,
+        http_timeout: float | None = None,
+        http_pool_size: int | None = None,
+        rate_limit_buffer: float | None = None,
     ):
+        config = config_module.DEFAULT_CONFIG
+
+        base_url = base_url or config.base_url
+        flush_interval = flush_interval or config.flush_interval
+        flush_size = flush_size or config.flush_size
+        max_buffer_size = max_buffer_size or config.max_buffer_size
+        http_timeout = http_timeout or config.http_timeout
+        http_pool_size = http_pool_size or config.http_pool_size
+        rate_limit_buffer = rate_limit_buffer or config.rate_limit_buffer
         self._validate_config(
             api_key=api_key,
             base_url=base_url,
