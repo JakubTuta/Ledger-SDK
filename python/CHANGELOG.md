@@ -1,3 +1,13 @@
+## [1.0.1] - 2025-01-13
+
+### Added
+
+- config file instead of hard coded values
+
+### Changed
+
+- README.md with relevant links
+
 ## [1.0.0] - 2025-01-11
 
 ### Added
@@ -28,4 +38,5 @@
 
 - FastAPI (via LedgerMiddleware)
 
+[1.0.1]: https://github.com/JakubTuta/ledger-sdk/releases/tag/v1.0.1
 [1.0.0]: https://github.com/JakubTuta/ledger-sdk/releases/tag/v1.0.0
