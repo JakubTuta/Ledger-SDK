@@ -42,7 +42,7 @@ app = FastAPI()
 
 ledger = LedgerClient(
     api_key="ldg_proj_1_your_api_key_here",
-    base_url="https://api.ledger.example.com"
+    base_url="https://ledger-server.jtuta.cloud"
 )
 
 app.add_middleware(
@@ -77,7 +77,7 @@ from ledger import LedgerClient
 
 ledger = LedgerClient(
     api_key="ldg_proj_1_your_api_key",
-    base_url="https://api.ledger.example.com"
+    base_url="https://ledger-server.jtuta.cloud"
 )
 
 ledger.log_info("User logged in", attributes={"user_id": 123, "ip": "192.168.1.1"})
@@ -354,7 +354,7 @@ Visit http://localhost:8080/docs to test the API.
 
 ```bash
 export LEDGER_API_KEY="ldg_proj_1_your_production_key"
-export LEDGER_BASE_URL="https://api.ledger.example.com"
+export LEDGER_BASE_URL="https://ledger-server.jtuta.cloud"
 ```
 
 ### Docker Example
@@ -394,7 +394,7 @@ spec:
                   name: ledger-secret
                   key: api-key
             - name: LEDGER_BASE_URL
-              value: "https://api.ledger.example.com"
+              value: "https://ledger-server.jtuta.cloud"
 ```
 
 ## Documentation
@@ -413,11 +413,19 @@ spec:
 - **Documentation**: [Full documentation](../sdk_overview/)
 - **Examples**: [See examples/](examples/)
 
-## Links
+## Resources
 
-- **PyPI**: https://pypi.org/project/ledger-sdk/
-- **GitHub**: https://github.com/JakubTuta/ledger-sdk
-- **Documentation**: https://docs.ledger.example.com
+- **Server Repository**: https://github.com/JakubTuta/Ledger-APP
+- **SDK Repository**: https://github.com/JakubTuta/Ledger-SDK
+- **Frontend Repository**: https://github.com/JakubTuta/Ledger-WEB
+- **PyPI Package**: https://pypi.org/project/ledger-sdk/
+- **Production Server**: https://ledger-server.jtuta.cloud
+- **Frontend Dashboard**: https://ledger.jtuta.cloud
+
+## Support
+
+- **GitHub Issues**: [Report bugs or request features](https://github.com/JakubTuta/Ledger-SDK/issues)
+- **Server Connection**: See [SERVER.md](../SERVER.md) for API endpoints
 
 ## License
 

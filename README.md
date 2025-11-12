@@ -52,7 +52,7 @@ app = FastAPI()
 
 ledger = LedgerClient(
     api_key="ldg_proj_1_your_api_key",
-    base_url="https://api.ledger.example.com"
+    base_url="https://ledger-server.jtuta.cloud"  # Production server
 )
 
 app.add_middleware(LedgerMiddleware, ledger_client=ledger)
@@ -140,8 +140,8 @@ See [Python SDK Documentation](python/fastapi/) for complete guide.
 ### Getting Help
 
 - **Documentation**: [SDK Overview](sdk_overview/)
-- **GitHub Issues**: [Report bugs or request features](https://github.com/JakubTuta/ledger-sdk/issues)
-- **Discussions**: [Ask questions](https://github.com/JakubTuta/ledger-sdk/discussions)
+- **Server Info**: [SERVER.md](SERVER.md) - API endpoints and connection details
+- **GitHub Issues**: [Report bugs or request features](https://github.com/JakubTuta/Ledger-SDK/issues)
 - **Examples**: [See examples/](python/fastapi/examples/)
 
 ### Reporting Issues
@@ -153,6 +153,15 @@ When reporting issues, include:
 - Minimal reproduction code
 - Expected vs actual behavior
 - SDK metrics output (if applicable)
+
+## Resources
+
+- **Server Repository**: https://github.com/JakubTuta/Ledger-APP
+- **SDK Repository**: https://github.com/JakubTuta/Ledger-SDK
+- **Frontend Repository**: https://github.com/JakubTuta/Ledger-WEB
+- **PyPI Package**: https://pypi.org/project/ledger-sdk/
+- **Production Server**: https://ledger-server.jtuta.cloud
+- **Frontend Dashboard**: https://ledger.jtuta.cloud
 
 ## License
 

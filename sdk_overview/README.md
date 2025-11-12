@@ -37,9 +37,9 @@ The SDK project Phase 1 is **production-ready**. Implementation is located in `.
 
 ### Quick Reference
 
-**Server API Reference**: See `../server_overview/SDK_REFERENCE.md` for REST API specification
+**Server Connection**: See [SERVER.md](../SERVER.md) for API endpoints and connection details
 
-**Server Architecture**: See `../server_overview/ARCHITECTURE.md` for backend system design
+**Server Repository**: https://github.com/JakubTuta/Ledger-APP
 
 ## Design Principles
 
@@ -78,3 +78,14 @@ See the [Python SDK README](../python/README.md) for complete quick start guide.
 ## Project Vision
 
 Ledger SDK aims to provide production-grade observability for high-performance applications across multiple languages and frameworks. Starting with Python/FastAPI, we will expand to support the entire modern web development ecosystem.
+
+---
+
+## Resources
+
+- **Server Repository**: https://github.com/JakubTuta/Ledger-APP
+- **SDK Repository**: https://github.com/JakubTuta/Ledger-SDK
+- **Frontend Repository**: https://github.com/JakubTuta/Ledger-WEB
+- **PyPI Package**: https://pypi.org/project/ledger-sdk/
+- **Production Server**: https://ledger-server.jtuta.cloud
+- **Frontend Dashboard**: https://ledger.jtuta.cloud
