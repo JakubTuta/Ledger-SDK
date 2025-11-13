@@ -38,5 +38,5 @@
 
 - FastAPI (via LedgerMiddleware)
 
-[1.0.1]: https://github.com/JakubTuta/ledger-sdk/releases/tag/v1.0.1
+[1.0.1]: https://github.com/JakubTuta/ledger-sdk/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/JakubTuta/ledger-sdk/releases/tag/v1.0.0
