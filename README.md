@@ -42,22 +42,24 @@ pip install ledger-sdk
 ```
 
 ```python
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from ledger import LedgerClient
 from ledger.integrations.fastapi import LedgerMiddleware
-
-app = FastAPI()
 
 ledger = LedgerClient(
     api_key="ldg_proj_1_your_api_key",
     base_url="https://ledger-server.jtuta.cloud"
 )
 
-app.add_middleware(LedgerMiddleware, ledger_client=ledger)
-
-@app.on_event("shutdown")
-async def shutdown():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
     await ledger.shutdown()
+
+app = FastAPI(lifespan=lifespan)
+
+app.add_middleware(LedgerMiddleware, ledger_client=ledger)
 ```
 
 That's all you need. Start your app and watch the logs flow into your [Ledger dashboard](https://ledger.jtuta.cloud).

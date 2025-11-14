@@ -62,6 +62,10 @@ client.log_info("Application started", attributes={"version": "1.0.0"})
 
 ## API Endpoints
 
+For complete API documentation, see:
+- **API Documentation**: https://bump.sh/tuta-corp/doc/ledger-api/
+- **OpenAPI Spec**: https://ledger-server.jtuta.cloud/openapi.json
+
 ### Authentication
 - `POST /api/v1/accounts/register` - Create account
 - `POST /api/v1/accounts/login` - Login
@@ -91,6 +95,8 @@ Rate limits are enforced per API key.
 
 ## Resources
 
+- **API Documentation**: https://bump.sh/tuta-corp/doc/ledger-api/
+- **OpenAPI Spec**: https://ledger-server.jtuta.cloud/openapi.json
 - **Server Repository**: https://github.com/JakubTuta/Ledger-APP
 - **SDK Repository**: https://github.com/JakubTuta/Ledger-SDK
 - **Frontend Repository**: https://github.com/JakubTuta/Ledger-WEB

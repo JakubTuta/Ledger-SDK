@@ -1,5 +1,6 @@
 import os
 import sys
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -16,8 +17,6 @@ if env_path.exists():
 else:
     print(f"[WARNING] No .env file found at {env_path}")
     print("  Run: python scripts/setup_test_account.py")
-
-app = FastAPI(title="Ledger SDK Example")
 
 api_key = os.getenv("LEDGER_API_KEY")
 base_url = os.getenv("LEDGER_BASE_URL")
@@ -39,6 +38,17 @@ ledger = LedgerClient(
     flush_interval=5.0,
     max_buffer_size=10000,
 )
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    print("Shutting down, flushing remaining logs...")
+    await ledger.shutdown(timeout=10.0)
+    print("Shutdown complete")
+
+
+app = FastAPI(title="Ledger SDK Example", lifespan=lifespan)
 
 app.add_middleware(
     LedgerMiddleware,
@@ -100,13 +110,6 @@ async def get_metrics():
 @app.get("/sdk/health")
 async def sdk_health():
     return ledger.get_health_status()
-
-
-@app.on_event("shutdown")
-async def shutdown():
-    print("Shutting down, flushing remaining logs...")
-    await ledger.shutdown(timeout=10.0)
-    print("Shutdown complete")
 
 
 if __name__ == "__main__":
