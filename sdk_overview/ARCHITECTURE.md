@@ -1,236 +1,81 @@
-# Ledger SDK Architecture
+# How Ledger Works
 
-High-level architecture for the Ledger SDK system.
+This guide explains how logs flow from your application to the Ledger dashboard.
 
-## System Overview
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    CLIENT APPLICATION                        │
-│                                                              │
-│  User Request → FastAPI → LedgerMiddleware                  │
-│                              ↓                               │
-│                      Capture log data                        │
-│                              ↓                               │
-│                      Buffer.add(log)  ← O(1), non-blocking  │
-│                              ↓                               │
-│                      Return response to user                 │
-└──────────────────────────────┬──────────────────────────────┘
-                               │
-                               │ Background task (async)
-                               ↓
-┌─────────────────────────────────────────────────────────────┐
-│                    LEDGER SDK                                │
-│                                                              │
-│  ┌────────────────┐          ┌──────────────┐              │
-│  │  Log Buffer    │──────────│ Rate Limiter │              │
-│  │  (Queue)       │          │              │              │
-│  └────────┬───────┘          └──────┬───────┘              │
-│           │                         │                       │
-│           │  Every 5s OR 100 logs   │                       │
-│           ↓                         ↓                       │
-│  ┌─────────────────────────────────────────┐               │
-│  │  Background Flusher                     │               │
-│  │  1. Check rate limit                    │               │
-│  │  2. Batch up to 1000 logs               │               │
-│  │  3. Send to Ledger                      │               │
-│  │  4. Handle retries                      │               │
-│  └─────────────────┬───────────────────────┘               │
-│                    │                                        │
-└────────────────────┼────────────────────────────────────────┘
-                     │
-                     │ HTTP POST /api/v1/ingest/batch
-                     ↓
-┌─────────────────────────────────────────────────────────────┐
-│                    LEDGER SERVER                             │
-│                                                              │
-│  Gateway → Auth → Ingestion Service → Redis Queue           │
-└─────────────────────────────────────────────────────────────┘
-```
-
-## Initialization Flow
+## The Big Picture
 
 ```
-Application Startup
-    ↓
-Initialize LedgerClient(api_key, base_url, options)
-    ↓
-Create internal components:
-    ├─ HTTP Client (connection pool: 10 connections)
-    ├─ Settings Manager (lazy-loads on first use)
-    ├─ Log Buffer (in-memory queue)
-    ├─ Rate Limiter (sliding window tracker)
-    └─ Background Flusher (async task)
-    ↓
-Register middleware with FastAPI app
-    ↓
-App ready to serve requests
+Your Application
+    ↓ (captures request info)
+Ledger SDK
+    ↓ (adds to buffer)
+Background Task
+    ↓ (sends batches)
+Ledger Server
+    ↓ (stores and indexes)
+Ledger Dashboard
 ```
 
-**Key Decision**: Settings are lazy-loaded on first log, not during initialization. This prevents blocking app startup if Ledger server is unreachable.
+## Step by Step
 
-## Request/Response Lifecycle
+### 1. Your App Receives a Request
 
-```
-User Request to Client's API
-    ↓
-FastAPI receives request
-    ↓
-LedgerMiddleware.dispatch() called
-    ↓
-┌─────────────────────────────────────┐
-│ BEFORE REQUEST                      │
-│ - Capture: timestamp, method, URL   │
-│ - Store in request.state            │
-└─────────────────────────────────────┘
-    ↓
-Call next middleware / endpoint handler
-    ↓
-Endpoint executes (business logic)
-    ↓
-┌─────────────────────────────────────┐
-│ IF EXCEPTION OCCURS:                │
-│ - Catch exception                   │
-│ - Extract: error type, message,     │
-│   stack trace                       │
-│ - Add to buffer (non-blocking)      │
-│ - Re-raise exception                │
-│   (app handles normally)            │
-└─────────────────────────────────────┘
-    ↓
-Response ready
-    ↓
-┌─────────────────────────────────────┐
-│ AFTER RESPONSE                      │
-│ - Calculate duration                │
-│ - Capture: status code, duration    │
-│ - Create log entry                  │
-│ - Add to buffer (non-blocking)      │
-│   Buffer.add(log) → instant return  │
-└─────────────────────────────────────┘
-    ↓
-Return response to user (NO waiting for Ledger)
-```
+When someone hits your API, FastAPI processes the request normally. The Ledger middleware quietly notes the timestamp, method, and URL.
 
-## Log Buffer & Background Flushing
+**Time added:** Less than 0.1ms
 
-```
-┌──────────────────────────────────────────────────┐
-│  In-Memory Log Buffer (Thread-safe Queue)        │
-│  ┌────┐ ┌────┐ ┌────┐ ┌────┐                    │
-│  │Log1│ │Log2│ │Log3│ │Log4│ ... (max 10,000)   │
-│  └────┘ └────┘ └────┘ └────┘                    │
-└──────────────────────────────────────────────────┘
-         ↓                        ↓
-    Size trigger              Time trigger
-  (100 logs reached)         (5 seconds passed)
-         ↓                        ↓
-         └────────┬───────────────┘
-                  ↓
-      ┌───────────────────────┐
-      │ Background Flusher    │
-      │ (asyncio.Task)        │
-      └───────────────────────┘
-                  ↓
-      1. Pop up to 1,000 logs from buffer
-      2. Check rate limiter (can we send now?)
-         ├─ YES → Continue to step 3
-         └─ NO → Sleep until next available slot
-      3. Send batch to Ledger API
-         POST /api/v1/ingest/batch
-      4. Handle response:
-         ├─ 202 Accepted → Success, clear buffer
-         ├─ 429 Too Many Requests → Backoff, retry
-         ├─ 503 Service Unavailable → Queue full, backoff
-         └─ Network error → Keep in buffer, retry later
-      5. Repeat every 5 seconds
-```
+### 2. Your Endpoint Runs
 
-## Settings Management
+Your code executes as usual. If an exception happens, Ledger catches it (and re-raises it so your app can handle it normally).
 
-```
-First log call
-    ↓
-Settings Manager checks: do we have cached settings?
-    ├─ YES → Use cached settings
-    └─ NO → Fetch from server
-              ↓
-        GET /api/v1/settings
-              ↓
-        ┌─────────────────────────────────┐
-        │ Cache settings in memory:       │
-        │ - Rate limits (1000/min)        │
-        │ - Max batch size (1000)         │
-        │ - Field length limits           │
-        │ - Daily quota info              │
-        │ TTL: Lifetime of SDK instance   │
-        └─────────────────────────────────┘
-              ↓
-        Configure SDK components:
-        ├─ Rate Limiter (set limits)
-        ├─ Buffer (set max batch size)
-        └─ Validator (set field limits)
-```
+### 3. Response is Sent
 
-**Cache Strategy**:
-- **In-memory only** (no disk cache for Phase 1)
-- **Lifetime**: Until SDK process restarts
-- **Refresh triggers**:
-  - Manual: `client.refresh_settings()` method
-  - Automatic: On 401 Unauthorized response
-- **Fallback**: If settings fetch fails, use conservative defaults
+Before sending the response back to the user, Ledger records the status code and duration. This log entry goes into a buffer in memory.
 
-## Performance Characteristics
+**Time added:** Less than 0.1ms
 
-| Metric | Target | Notes |
-|--------|--------|-------|
-| Middleware latency | <1ms | Non-blocking buffer add |
-| Background flush latency | 50-200ms | Depends on batch size |
-| Memory overhead | ~10MB | 10,000 logs @ 1KB each |
-| HTTP connections | 10 persistent | Connection pooling |
-| CPU overhead | <1% | Minimal, async I/O |
+**User gets their response immediately** - no waiting for network requests.
 
-## Failure Modes & Handling
+### 4. Background Task Sends Batches
 
-### Buffer Overflow
-- **Trigger**: Buffer exceeds 10,000 logs
-- **Action**: Drop oldest logs (FIFO), log warning to stderr
-- **Recovery**: Automatic when flush succeeds
+Every 5 seconds (or when 1000 logs accumulate), a background task wakes up and sends the buffered logs to the Ledger server.
 
-### Ledger Server Unreachable
-- **Trigger**: Network error, timeout
-- **Action**: Keep logs in buffer, exponential backoff
-- **Recovery**: Retry when network recovers
+This happens completely separately from your request handling. Your API stays fast even if Ledger is slow.
 
-### Rate Limit Exceeded
-- **Trigger**: 429 Too Many Requests
-- **Action**: Sleep for Retry-After duration
-- **Recovery**: Automatic after cooldown
+### 5. Server Stores Logs
 
-### API Key Invalid
-- **Trigger**: 401 Unauthorized
-- **Action**: Refresh settings, log error to stderr
-- **Recovery**: Manual (user must fix API key)
+The Ledger server receives the batch, validates it, and stores it in the database. You can then search and analyze logs in the dashboard.
 
-## Security Considerations
+## What If Things Go Wrong?
 
-1. **API Key Storage**: Never log API keys to Ledger or stderr
-2. **Data Privacy**: Middleware doesn't capture request/response bodies by default
-3. **Memory Safety**: Buffer size limit prevents memory exhaustion
-4. **Secure Transport**: HTTPS for production Ledger endpoints
+### Ledger Server is Down
 
-## Scalability
+Logs stay in the buffer. The SDK automatically retries with backoff (waits 2s, then 4s, then 8s). Logs aren't lost unless the buffer fills up.
 
-### Vertical Scaling
-- Single SDK instance handles 10K+ req/sec (client app traffic)
-- Batching reduces Ledger API calls to 1-2 per second
-- Memory footprint stays constant (~10MB)
+### Buffer Fills Up
 
-### Horizontal Scaling
-- Multiple app instances (load balanced) each have independent SDK instance
-- Server-side aggregation handles distributed logs
-- No coordination needed between SDK instances
+If logs can't be sent for a while and the buffer reaches 10,000 logs, the SDK starts dropping the oldest ones. This prevents your app from running out of memory.
+
+### Network is Slow
+
+Doesn't matter. All network operations happen in the background. Your app never waits.
+
+### Rate Limit Hit
+
+The SDK has built-in rate limiting to avoid hitting server limits. If you do hit a limit, it backs off automatically.
+
+## Why It's Fast
+
+**Non-blocking design** - Log capture returns instantly. Network requests happen later.
+
+**Batching** - Instead of 1000 separate requests per second, the SDK sends 1 batch with 1000 logs every 5 seconds.
+
+**Connection pooling** - HTTP connections stay open and get reused, avoiding slow connection setup.
+
+**Async everything** - All I/O uses Python's asyncio, so a single thread can handle thousands of concurrent operations.
 
 ## Next Steps
 
-See [COMPONENTS.md](COMPONENTS.md) for detailed component design.
+- [CONFIGURATION.md](CONFIGURATION.md) - Tune the SDK for your traffic
+- [ERROR_HANDLING.md](ERROR_HANDLING.md) - Learn about retry behavior
+- [PERFORMANCE.md](PERFORMANCE.md) - Performance details

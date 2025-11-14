@@ -1,43 +1,41 @@
 # Ledger
 
-**Modern, production-ready observability platform with zero-overhead SDKs for every language and framework.**
+**Observability for developers who just want to ship.**
 
-[![Python SDK](https://img.shields.io/badge/python-production--ready-brightgreen.svg)](python/fastapi/)
+Add one line of code. Get automatic request logging, exception tracking, and performance monitoring. No configuration required.
+
+```python
+from ledger import LedgerClient
+from ledger.integrations.fastapi import LedgerMiddleware
+
+app.add_middleware(LedgerMiddleware, ledger_client=ledger)
+```
+
+That's it. Every request, response, and exception is now logged to your Ledger dashboard.
+
+[![Python SDK](https://img.shields.io/badge/python-v1.0.0-blue.svg)](https://pypi.org/project/ledger-sdk/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/status-active-success.svg)]()
+[![Downloads](https://img.shields.io/badge/production-ready-brightgreen.svg)]()
 
-## Mission
+## Why Ledger?
 
-Ledger provides developers with **effortless observability** through automatic request/response logging, exception tracking, and performance monitoring across all major languages and frameworks. Our goal is to make observability as simple as adding a single line of code, with zero performance impact on production applications.
+Traditional observability tools are complicated, expensive, and slow down your application. Ledger is different:
 
-## Vision
+- **Actually zero overhead** - Less than 0.1ms per request. Your users won't notice.
+- **Works out of the box** - No configuration files, no setup guides, no dashboards to build.
+- **Production-ready from day one** - Built-in retry logic, rate limiting, and graceful failure handling.
 
-Modern applications span multiple languages and frameworks. Ledger SDKs provide consistent, production-grade observability across your entire stack with:
+We built Ledger because we were tired of spending hours setting up logging infrastructure for every new project. Now it takes one line of code.
 
-- **Zero overhead**: <0.1ms per request
-- **Zero configuration**: Works out of the box with sensible defaults
-- **Zero maintenance**: Automatic retries, circuit breakers, and health monitoring built-in
+## Available Now
 
-## Project Status
+**Python SDK** for FastAPI (v1.0.0) - [Install from PyPI](https://pypi.org/project/ledger-sdk/)
 
-### ✅ Production Ready
+Coming soon: Flask, Django, Express, and more.
 
-- **[Python SDK](python/fastapi/)** - FastAPI integration (v1.0.0)
-  - Automatic request/response logging
-  - Exception tracking with stack traces
-  - Circuit breaker pattern
-  - Dual rate limiting (per-minute and per-hour)
-  - Comprehensive health checks and metrics
-
-### 🚧 Coming Soon
-
-- **Python SDK** - Flask integration (v1.1)
-- **Python SDK** - Django integration (v1.2)
-- **Node.js SDK** - Express, Fastify, NestJS
+Want support for your framework? [Open an issue](https://github.com/JakubTuta/Ledger-SDK/issues) and let us know.
 
 ## Quick Start
-
-### Python (FastAPI)
 
 ```bash
 pip install ledger-sdk
@@ -52,7 +50,7 @@ app = FastAPI()
 
 ledger = LedgerClient(
     api_key="ldg_proj_1_your_api_key",
-    base_url="https://ledger-server.jtuta.cloud"  # Production server
+    base_url="https://ledger-server.jtuta.cloud"
 )
 
 app.add_middleware(LedgerMiddleware, ledger_client=ledger)
@@ -62,117 +60,44 @@ async def shutdown():
     await ledger.shutdown()
 ```
 
-See [Python SDK Documentation](python/fastapi/) for complete guide.
+That's all you need. Start your app and watch the logs flow into your [Ledger dashboard](https://ledger.jtuta.cloud).
 
-## Features
+[Full documentation](python/) • [Get API key](https://ledger.jtuta.cloud) • [Examples](python/fastapi/examples/)
 
-### Core Capabilities
+## What You Get
 
-- **Automatic Logging**: Request/response capture via middleware
-- **Exception Tracking**: Full stack traces with context
-- **Performance Monitoring**: Request duration, status codes, error rates
-- **Custom Events**: Manual logging with structured attributes
+**Automatic capture** - Every request, response, and exception. No manual logging code.
 
-### Production Features
+**Full context** - Stack traces, request headers, response bodies, user attributes. Everything you need to debug.
 
-- **Circuit Breaker**: Automatic failure detection and recovery
-- **Exponential Backoff**: Smart retry logic for transient failures
-- **Rate Limiting**: Client-side rate limiting (per-minute and per-hour)
-- **Health Checks**: Built-in health and metrics endpoints
-- **Graceful Shutdown**: Connection draining and buffer flushing
+**Performance insights** - Response times, error rates, slow endpoints. Know where to optimize.
 
-### Developer Experience
+**Production reliability** - Automatic retries, rate limiting, and graceful degradation. Works even when your network doesn't.
 
-- **Zero Overhead**: <0.1ms overhead per request
-- **Non-Blocking**: All I/O happens asynchronously
-- **Type Safe**: Full type hints and IDE support
-- **Observable**: Built-in metrics and diagnostics
-- **Configurable**: Tune for any workload (high-volume, low-latency, background workers)
+**Zero performance impact** - All logging happens in the background. Your API stays fast.
 
-## Architecture
+## How It Works
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     Your Application                        │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │              Ledger SDK Middleware                   │  │
-│  │  • Captures requests/responses (<0.1ms overhead)     │  │
-│  │  • Adds to buffer (non-blocking, O(1))              │  │
-│  └──────────────────────────────────────────────────────┘  │
-│                           │                                  │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │          Background Flusher (Async Task)             │  │
-│  │  • Batches logs (every 5s or 1000 logs)             │  │
-│  │  • Rate limiting (client-side)                       │  │
-│  │  • Circuit breaker (5 failures → 60s timeout)        │  │
-│  │  • Exponential backoff (2s, 4s, 8s)                 │  │
-│  └──────────────────────────────────────────────────────┘  │
-└───────────────────────────┬─────────────────────────────────┘
-                            │ HTTPS
-                            ▼
-            ┌──────────────────────────────┐
-            │      Ledger Server API       │
-            │  • /api/v1/ingest/batch      │
-            │  • Rate limiting (1000/min)  │
-            │  • Queue management          │
-            └──────────────────────────────┘
-                            │
-                            ▼
-            ┌──────────────────────────────┐
-            │       Ledger Platform        │
-            │  • Log storage & indexing    │
-            │  • Search & analytics        │
-            │  • Alerting & dashboards     │
-            └──────────────────────────────┘
-```
+Ledger captures logs in your application (<0.1ms), buffers them in memory, and sends batches to the Ledger server in the background. Your application never waits for network I/O.
 
-## Design Principles
+If the server is down or slow, the SDK automatically retries with backoff. If it's really stuck, it drops old logs to prevent memory issues. You get observability without the risk.
 
-1. **Zero Overhead**: SDK operations never slow down your application
-2. **Fail Gracefully**: Buffer → Retry → Drop (only as last resort)
-3. **Respect Limits**: Client-side rate limiting and batch size constraints
-4. **Observable**: Built-in metrics and health checks for debugging
-5. **Configurable**: Tune behavior for different workloads
-6. **Future-Proof**: Architecture designed for multi-language expansion
+[Architecture details](sdk_overview/ARCHITECTURE.md) • [Performance benchmarks](sdk_overview/PERFORMANCE.md)
 
-## Support
+## Need Help?
 
-### Getting Help
+- [Read the docs](python/) - Full guides and examples
+- [Open an issue](https://github.com/JakubTuta/Ledger-SDK/issues) - Bug reports and feature requests
+- [View examples](python/fastapi/examples/) - See it in action
 
-- **Documentation**: [SDK Overview](sdk_overview/)
-- **Server Info**: [SERVER.md](SERVER.md) - API endpoints and connection details
-- **GitHub Issues**: [Report bugs or request features](https://github.com/JakubTuta/Ledger-SDK/issues)
-- **Examples**: [See examples/](python/fastapi/examples/)
+## Links
 
-### Reporting Issues
-
-When reporting issues, include:
-
-- SDK version and language
-- Framework and version
-- Minimal reproduction code
-- Expected vs actual behavior
-- SDK metrics output (if applicable)
-
-## Resources
-
-- **Server Repository**: https://github.com/JakubTuta/Ledger-APP
-- **SDK Repository**: https://github.com/JakubTuta/Ledger-SDK
-- **Frontend Repository**: https://github.com/JakubTuta/Ledger-WEB
-- **PyPI Package**: https://pypi.org/project/ledger-sdk/
-- **Production Server**: https://ledger-server.jtuta.cloud
-- **Frontend Dashboard**: https://ledger.jtuta.cloud
+- [PyPI Package](https://pypi.org/project/ledger-sdk/) - Install the SDK
+- [Dashboard](https://ledger.jtuta.cloud) - View your logs
+- [API Server](https://ledger-server.jtuta.cloud) - Server endpoint
+- [Backend Source](https://github.com/JakubTuta/Ledger-APP) - API server code
+- [Frontend Source](https://github.com/JakubTuta/Ledger-WEB) - Dashboard code
 
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
-
-## Acknowledgments
-
-Built with inspiration from:
-
-- **Sentry** - Error tracking and monitoring
-- **Datadog** - APM and observability
-- **OpenTelemetry** - Observability standards
-- **httpx** - Modern HTTP client architecture
-- **FastAPI** - Performance and developer experience
