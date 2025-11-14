@@ -1,3 +1,9 @@
+## [1.0.3] - 2025-01-14
+
+### Changed
+
+- Hotfixed Ledger project api key prefix
+
 ## [1.0.2] - 2025-01-14
 
 ### Added
@@ -49,6 +55,7 @@
 
 - FastAPI (via LedgerMiddleware)
 
+[1.0.3]: https://github.com/JakubTuta/ledger-sdk/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/JakubTuta/ledger-sdk/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/JakubTuta/ledger-sdk/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/JakubTuta/ledger-sdk/releases/tag/v1.0.0
