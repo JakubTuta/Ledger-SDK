@@ -1,3 +1,14 @@
+## [1.0.2] - 2025-01-14
+
+### Added
+
+- Support for Pydantic Settings integration for configuration management
+- Starlette compatibility improvements for FastAPI middleware
+
+### Changed
+
+- Updated dependencies to latest versions
+
 ## [1.0.1] - 2025-01-13
 
 ### Added
@@ -7,8 +18,6 @@
 ### Changed
 
 - README.md with relevant links
-
-[1.0.1]: https://github.com/JakubTuta/ledger-sdk/compare/v1.0.0...v1.0.1
 
 ## [1.0.0] - 2025-01-11
 
@@ -40,4 +49,6 @@
 
 - FastAPI (via LedgerMiddleware)
 
+[1.0.2]: https://github.com/JakubTuta/ledger-sdk/compare/v1.0.1...v1.0.2
+[1.0.1]: https://github.com/JakubTuta/ledger-sdk/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/JakubTuta/ledger-sdk/releases/tag/v1.0.0
