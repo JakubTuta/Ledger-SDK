@@ -41,7 +41,7 @@ from ledger import LedgerClient
 from ledger.integrations.fastapi import LedgerMiddleware
 
 ledger = LedgerClient(
-    api_key="ldg_proj_1_your_api_key",
+    api_key="ledger_proj_1_your_api_key",
     base_url="https://ledger-server.jtuta.cloud"
 )
 
@@ -104,7 +104,7 @@ The defaults work for most applications. But if you're handling extreme traffic,
 
 ```python
 ledger = LedgerClient(
-    api_key="ldg_proj_1_your_api_key",
+    api_key="ledger_proj_1_your_api_key",
     flush_interval=5.0,        # Seconds between flushes
     flush_size=1000,            # Logs before auto-flush
     max_buffer_size=10000,      # Max logs in memory
@@ -159,7 +159,6 @@ If the server is down or slow, the SDK automatically retries with backoff. If it
 
 [Architecture details](../sdk_overview/ARCHITECTURE.md) • [Error handling guide](../sdk_overview/ERROR_HANDLING.md)
 
-
 ## Development
 
 ```bash
@@ -178,7 +177,7 @@ pytest
 Set your API key as an environment variable:
 
 ```bash
-export LEDGER_API_KEY="ldg_proj_1_your_production_key"
+export LEDGER_API_KEY="ledger_proj_1_your_production_key"
 export LEDGER_BASE_URL="https://ledger-server.jtuta.cloud"
 ```
 

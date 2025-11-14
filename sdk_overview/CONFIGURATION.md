@@ -8,7 +8,7 @@ The SDK comes with sensible defaults that work for typical web APIs:
 
 ```python
 ledger = LedgerClient(
-    api_key="ldg_proj_1_your_key",
+    api_key="ledger_proj_1_your_key",
     base_url="https://ledger-server.jtuta.cloud"
 )
 ```
@@ -95,7 +95,7 @@ app.add_middleware(
 You can configure via environment variables instead:
 
 ```bash
-export LEDGER_API_KEY="ldg_proj_1_your_key"
+export LEDGER_API_KEY="ledger_proj_1_your_key"
 export LEDGER_BASE_URL="https://ledger-server.jtuta.cloud"
 export LEDGER_FLUSH_INTERVAL="5.0"
 ```
@@ -121,6 +121,7 @@ print(f"Failed flushes: {metrics['flusher']['failed_flushes']}")
 ```
 
 **Warning signs:**
+
 - `total_dropped` increasing = Buffer is too small or Ledger server is slow
 - `failed_flushes` increasing = Network or server issues
 - `current_size` always near `max_size` = You might need a bigger buffer

@@ -14,7 +14,7 @@ def mock_http_client():
 
 @pytest.fixture
 def api_key():
-    return "ldg_proj_1_test_key_12345"
+    return "ledger_proj_1_test_key_12345"
 
 
 @pytest.fixture

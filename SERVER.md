@@ -53,7 +53,7 @@ curl -X POST https://ledger-server.jtuta.cloud/api/v1/projects/{project_id}/api-
 from ledger import LedgerClient
 
 client = LedgerClient(
-    api_key="ldg_proj_1_your_api_key",
+    api_key="ledger_proj_1_your_api_key",
     base_url="https://ledger-server.jtuta.cloud"
 )
 
@@ -63,25 +63,30 @@ client.log_info("Application started", attributes={"version": "1.0.0"})
 ## API Endpoints
 
 For complete API documentation, see:
+
 - **API Documentation**: https://bump.sh/tuta-corp/doc/ledger-api/
 - **OpenAPI Spec**: https://ledger-server.jtuta.cloud/openapi.json
 
 ### Authentication
+
 - `POST /api/v1/accounts/register` - Create account
 - `POST /api/v1/accounts/login` - Login
 - `POST /api/v1/accounts/logout` - Logout
 - `GET /api/v1/accounts/me` - Get current account
 
 ### Projects
+
 - `POST /api/v1/projects` - Create project
 - `GET /api/v1/projects` - List projects
 - `GET /api/v1/projects/{slug}` - Get project by slug
 
 ### API Keys
+
 - `POST /api/v1/projects/{project_id}/api-keys` - Create API key
 - `DELETE /api/v1/api-keys/{key_id}` - Revoke API key
 
 ### Log Ingestion
+
 - `POST /api/v1/ingest/single` - Ingest single log
 - `POST /api/v1/ingest/batch` - Ingest batch logs (up to 1,000)
 - `GET /api/v1/queue/depth` - Get queue depth

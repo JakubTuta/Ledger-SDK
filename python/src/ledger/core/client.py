@@ -95,8 +95,8 @@ class LedgerClient:
         if not api_key or not isinstance(api_key, str):
             errors.append("api_key must be a non-empty string")
 
-        if not api_key.startswith("ldg_"):
-            errors.append("api_key must start with 'ldg_' prefix")
+        if not api_key.startswith("ledger_"):
+            errors.append("api_key must start with 'ledger_' prefix")
 
         if not base_url or not isinstance(base_url, str):
             errors.append("base_url must be a non-empty string")

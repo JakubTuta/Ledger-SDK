@@ -48,7 +48,7 @@ from ledger import LedgerClient
 from ledger.integrations.fastapi import LedgerMiddleware
 
 ledger = LedgerClient(
-    api_key="ldg_proj_1_your_api_key",
+    api_key="ledger_proj_1_your_api_key",
     base_url="https://ledger-server.jtuta.cloud"
 )
 

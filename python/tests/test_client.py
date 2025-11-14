@@ -16,7 +16,7 @@ class TestLedgerClient:
         with pytest.raises(ValueError) as exc_info:
             LedgerClient(api_key="invalid_key", base_url="http://localhost:8000")
 
-        assert "api_key must start with 'ldg_' prefix" in str(exc_info.value)
+        assert "api_key must start with 'ledger_' prefix" in str(exc_info.value)
 
     def test_invalid_base_url(self, api_key):
         with pytest.raises(ValueError) as exc_info:

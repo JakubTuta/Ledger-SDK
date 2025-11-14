@@ -21,7 +21,7 @@ from ledger.integrations.fastapi import LedgerMiddleware
 
 app = FastAPI()
 
-ledger = LedgerClient(api_key="ldg_proj_1_your_key")
+ledger = LedgerClient(api_key="ledger_proj_1_your_key")
 
 app.add_middleware(LedgerMiddleware, ledger_client=ledger)
 
@@ -106,6 +106,7 @@ app.add_middleware(
 The middleware adds less than 0.1ms to each request.
 
 It works by:
+
 1. Noting the start time
 2. Calling your endpoint
 3. Recording the status code and duration
@@ -161,12 +162,14 @@ async def process_payment(amount: float):
 ## Privacy
 
 By default, the middleware doesn't capture:
+
 - Request bodies
 - Response bodies
 - Headers (which might contain auth tokens)
 - Cookies
 
 It only captures:
+
 - Request method (GET, POST, etc.)
 - Request URL path
 - Query parameters
