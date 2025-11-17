@@ -1,3 +1,4 @@
+import sys
 import traceback
 from datetime import datetime, timezone
 from typing import Any
@@ -22,6 +23,9 @@ class LedgerClient:
         http_timeout: float | None = None,
         http_pool_size: int | None = None,
         rate_limit_buffer: float | None = None,
+        environment: str | None = None,
+        release: str | None = None,
+        platform_version: str | None = None,
     ):
         config = config_module.DEFAULT_CONFIG
 
@@ -45,6 +49,9 @@ class LedgerClient:
 
         self.api_key = api_key
         self.base_url = base_url
+        self.environment = environment
+        self.release = release
+        self.platform_version = platform_version or f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
 
         self._http_client = http_client_module.HTTPClient(
             base_url=base_url,
@@ -213,6 +220,13 @@ class LedgerClient:
 
         log_entry["sdk_version"] = __version__
         log_entry["platform"] = "python"
+        log_entry["platform_version"] = self.platform_version
+
+        if self.environment:
+            log_entry["environment"] = self.environment
+
+        if self.release:
+            log_entry["release"] = self.release
 
         validated_log = self._validator.validate_log(log_entry)
 

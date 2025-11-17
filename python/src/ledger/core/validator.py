@@ -5,14 +5,18 @@ from typing import Any
 
 class Validator:
     VALID_LEVELS = {"debug", "info", "warning", "error", "critical"}
-    VALID_LOG_TYPES = {"console", "logger", "exception", "custom"}
-    VALID_IMPORTANCE = {"low", "standard", "high"}
+    VALID_LOG_TYPES = {"console", "logger", "exception", "network", "database", "endpoint", "custom"}
+    VALID_IMPORTANCE = {"critical", "high", "standard", "low"}
 
     def __init__(self, constraints: dict[str, Any]):
         self.max_message_length = constraints.get("max_message_length", 10000)
         self.max_error_message_length = constraints.get("max_error_message_length", 5000)
         self.max_stack_trace_length = constraints.get("max_stack_trace_length", 50000)
         self.max_attributes_size_bytes = constraints.get("max_attributes_size_bytes", 102400)
+        self.max_environment_length = 20
+        self.max_release_length = 100
+        self.max_platform_version_length = 50
+        self.max_error_type_length = 255
 
     def validate_log(self, log_entry: dict[str, Any]) -> dict[str, Any]:
         validated = log_entry.copy()
@@ -39,6 +43,26 @@ class Validator:
         if validated.get("stack_trace"):
             validated["stack_trace"] = self._truncate_string(
                 validated["stack_trace"], self.max_stack_trace_length, "stack_trace"
+            )
+
+        if validated.get("error_type"):
+            validated["error_type"] = self._truncate_string(
+                validated["error_type"], self.max_error_type_length, "error_type"
+            )
+
+        if validated.get("environment"):
+            validated["environment"] = self._truncate_string(
+                validated["environment"], self.max_environment_length, "environment"
+            )
+
+        if validated.get("release"):
+            validated["release"] = self._truncate_string(
+                validated["release"], self.max_release_length, "release"
+            )
+
+        if validated.get("platform_version"):
+            validated["platform_version"] = self._truncate_string(
+                validated["platform_version"], self.max_platform_version_length, "platform_version"
             )
 
         if validated.get("attributes"):
