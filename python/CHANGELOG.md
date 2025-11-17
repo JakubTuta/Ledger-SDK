@@ -1,3 +1,9 @@
+## [1.0.4] - 2025-01-17
+
+### Fixed
+
+- Updated ingestion call with newest server API docs
+
 ## [1.0.3] - 2025-01-14
 
 ### Changed
@@ -55,6 +61,7 @@
 
 - FastAPI (via LedgerMiddleware)
 
+[1.0.4]: https://github.com/JakubTuta/ledger-sdk/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/JakubTuta/ledger-sdk/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/JakubTuta/ledger-sdk/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/JakubTuta/ledger-sdk/compare/v1.0.0...v1.0.1
