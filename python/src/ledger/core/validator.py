@@ -5,7 +5,7 @@ from typing import Any
 
 class Validator:
     VALID_LEVELS = {"debug", "info", "warning", "error", "critical"}
-    VALID_LOG_TYPES = {"console", "logger", "exception", "network", "database", "endpoint", "custom"}
+    VALID_LOG_TYPES = {"console", "logger", "exception", "database", "endpoint", "custom"}
     VALID_IMPORTANCE = {"critical", "high", "standard", "low"}
 
     def __init__(self, constraints: dict[str, Any]):

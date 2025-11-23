@@ -1,3 +1,11 @@
+## [1.0.5] - 2025-11-23
+
+### Fixed
+
+- Removed invalid `network` log type from validator (not supported by server)
+- Fixed FastAPI middleware to use `log_type="endpoint"` instead of `"console"`
+- Fixed FastAPI middleware attributes structure to nest endpoint data under `endpoint` key as required by server
+
 ## [1.0.4] - 2025-01-17
 
 ### Fixed
@@ -61,6 +69,7 @@
 
 - FastAPI (via LedgerMiddleware)
 
+[1.0.5]: https://github.com/JakubTuta/ledger-sdk/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/JakubTuta/ledger-sdk/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/JakubTuta/ledger-sdk/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/JakubTuta/ledger-sdk/compare/v1.0.1...v1.0.2

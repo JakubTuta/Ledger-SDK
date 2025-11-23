@@ -75,20 +75,22 @@ class LedgerMiddleware(BaseHTTPMiddleware):
             f"{request_info['method']} {request_info['path']} - {status_code} ({duration_ms:.0f}ms)"
         )
 
+        endpoint_data = {
+            "method": request_info["method"],
+            "path": request_info["path"],
+            "status_code": status_code,
+            "duration_ms": round(duration_ms, 2),
+        }
+
+        if request_info.get("query_params"):
+            endpoint_data["query_params"] = request_info["query_params"]
+
         self.ledger._log(
             level=level,
-            log_type="console",
+            log_type="endpoint",
             importance=importance,
             message=message,
-            attributes={
-                "http": {
-                    "method": request_info["method"],
-                    "path": request_info["path"],
-                    "status_code": status_code,
-                    "duration_ms": round(duration_ms, 2),
-                    "query_params": request_info.get("query_params"),
-                }
-            },
+            attributes={"endpoint": endpoint_data},
         )
 
     def _log_exception(
@@ -99,15 +101,17 @@ class LedgerMiddleware(BaseHTTPMiddleware):
     ) -> None:
         message = f"{request_info['method']} {request_info['path']} - Exception: {exception!s}"
 
+        exception_attributes = {
+            "method": request_info["method"],
+            "path": request_info["path"],
+            "duration_ms": round(duration_ms, 2),
+        }
+
+        if request_info.get("query_params"):
+            exception_attributes["query_params"] = request_info["query_params"]
+
         self.ledger.log_exception(
             exception=exception,
             message=message,
-            attributes={
-                "http": {
-                    "method": request_info["method"],
-                    "path": request_info["path"],
-                    "duration_ms": round(duration_ms, 2),
-                    "query_params": request_info.get("query_params"),
-                }
-            },
+            attributes=exception_attributes,
         )
