@@ -91,11 +91,7 @@ class URLProcessor:
             if path.startswith(prefix):
                 return True
 
-        for extension in self.ignored_extensions:
-            if path.endswith(extension):
-                return True
-
-        return False
+        return any(path.endswith(extension) for extension in self.ignored_extensions)
 
     def normalize_path(self, path: str) -> str:
         if not self.normalize_paths:
