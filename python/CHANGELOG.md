@@ -1,3 +1,25 @@
+## [1.0.6] - 2025-11-26
+
+### Added
+
+- Automatic URL filtering to ignore bot traffic and malicious scanning attempts (/.git/, /robots.txt, .php files, etc.)
+- URL path normalization for analytics grouping (/users/123 -> /users/{id})
+- URLProcessor utility in core module for framework-agnostic URL processing
+- BaseMiddleware class for shared middleware logic across frameworks
+- Support for custom URL filtering patterns and normalization rules
+- Configurable template style for path normalization (curly braces or colon style)
+
+### Changed
+
+- Refactored FastAPI middleware to inherit from BaseMiddleware (reduced from 141 to 74 lines)
+- Updated integrations/**init**.py to prevent naming conflicts for future framework additions
+- Improved code reuse with 80% of middleware logic now shared across frameworks
+
+### Architecture
+
+- Created scalable foundation for Flask, Django, and other framework integrations
+- All filtering and normalization logic is framework-agnostic and reusable
+
 ## [1.0.5] - 2025-11-23
 
 ### Fixed
@@ -69,6 +91,7 @@
 
 - FastAPI (via LedgerMiddleware)
 
+[1.0.6]: https://github.com/JakubTuta/ledger-sdk/compare/v1.0.5...v1.0.6
 [1.0.5]: https://github.com/JakubTuta/ledger-sdk/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/JakubTuta/ledger-sdk/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/JakubTuta/ledger-sdk/compare/v1.0.2...v1.0.3

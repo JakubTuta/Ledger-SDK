@@ -1,39 +1,62 @@
 import time
 from collections.abc import Callable
+from typing import Pattern
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
+import ledger.core.base_middleware as base_middleware_module
 import ledger.core.client as client_module
 
 
-class LedgerMiddleware(BaseHTTPMiddleware):
+class LedgerMiddleware(BaseHTTPMiddleware, base_middleware_module.BaseMiddleware):
     def __init__(
         self,
         app: ASGIApp,
         ledger_client: "client_module.LedgerClient",
         exclude_paths: list[str] | None = None,
         capture_query_params: bool = True,
+        normalize_paths: bool = True,
+        filter_ignored_paths: bool = True,
+        custom_ignored_paths: list[str] | None = None,
+        custom_ignored_prefixes: list[str] | None = None,
+        custom_ignored_extensions: list[str] | None = None,
+        normalization_patterns: list[tuple[Pattern, str]] | None = None,
+        template_style: str = "curly",
     ):
-        super().__init__(app)
-        self.ledger = ledger_client
-        self.exclude_paths = exclude_paths or []
-        self.capture_query_params = capture_query_params
+        BaseHTTPMiddleware.__init__(self, app)
+        base_middleware_module.BaseMiddleware.__init__(
+            self,
+            ledger_client=ledger_client,
+            exclude_paths=exclude_paths,
+            capture_query_params=capture_query_params,
+            normalize_paths=normalize_paths,
+            filter_ignored_paths=filter_ignored_paths,
+            custom_ignored_paths=custom_ignored_paths,
+            custom_ignored_prefixes=custom_ignored_prefixes,
+            custom_ignored_extensions=custom_ignored_extensions,
+            normalization_patterns=normalization_patterns,
+            template_style=template_style,
+        )
 
     async def dispatch(
         self,
         request: Request,
         call_next: Callable[[Request], Response],
     ) -> Response:
-        if request.url.path in self.exclude_paths:
+        if self.should_exclude_path(request.url.path):
+            return await call_next(request)
+
+        processed_path = self.process_request_path(request.url.path)
+        if processed_path is None:
             return await call_next(request)
 
         start_time = time.time()
 
         request_info = {
             "method": request.method,
-            "path": request.url.path,
+            "path": processed_path,
         }
 
         if self.capture_query_params and request.url.query:
@@ -41,77 +64,10 @@ class LedgerMiddleware(BaseHTTPMiddleware):
 
         try:
             response = await call_next(request)
-
             duration_ms = (time.time() - start_time) * 1000
-
-            self._log_request(request_info, response.status_code, duration_ms)
-
+            self.log_request(request_info, response.status_code, duration_ms)
             return response
-
         except Exception as exc:
             duration_ms = (time.time() - start_time) * 1000
-
-            self._log_exception(request_info, exc, duration_ms)
-
+            self.log_exception(request_info, exc, duration_ms)
             raise
-
-    def _log_request(
-        self,
-        request_info: dict[str, str],
-        status_code: int,
-        duration_ms: float,
-    ) -> None:
-        if 200 <= status_code < 400:
-            level = "info"
-            importance = "standard"
-        elif 400 <= status_code < 500:
-            level = "warning"
-            importance = "standard"
-        else:
-            level = "error"
-            importance = "high"
-
-        message = (
-            f"{request_info['method']} {request_info['path']} - {status_code} ({duration_ms:.0f}ms)"
-        )
-
-        endpoint_data = {
-            "method": request_info["method"],
-            "path": request_info["path"],
-            "status_code": status_code,
-            "duration_ms": round(duration_ms, 2),
-        }
-
-        if request_info.get("query_params"):
-            endpoint_data["query_params"] = request_info["query_params"]
-
-        self.ledger._log(
-            level=level,
-            log_type="endpoint",
-            importance=importance,
-            message=message,
-            attributes={"endpoint": endpoint_data},
-        )
-
-    def _log_exception(
-        self,
-        request_info: dict[str, str],
-        exception: Exception,
-        duration_ms: float,
-    ) -> None:
-        message = f"{request_info['method']} {request_info['path']} - Exception: {exception!s}"
-
-        exception_attributes = {
-            "method": request_info["method"],
-            "path": request_info["path"],
-            "duration_ms": round(duration_ms, 2),
-        }
-
-        if request_info.get("query_params"):
-            exception_attributes["query_params"] = request_info["query_params"]
-
-        self.ledger.log_exception(
-            exception=exception,
-            message=message,
-            attributes=exception_attributes,
-        )

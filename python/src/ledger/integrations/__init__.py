@@ -1,3 +1,1 @@
-from ledger.integrations.fastapi import LedgerMiddleware
-
-__all__ = ["LedgerMiddleware"]
+__all__: list[str] = []

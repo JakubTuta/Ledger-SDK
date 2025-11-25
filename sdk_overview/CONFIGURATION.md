@@ -82,6 +82,8 @@ This gives you faster feedback when debugging.
 
 ### Middleware Settings
 
+**Basic exclusions:**
+
 ```python
 app.add_middleware(
     LedgerMiddleware,
@@ -89,6 +91,50 @@ app.add_middleware(
     exclude_paths=["/health", "/metrics"],  # Don't log these paths
 )
 ```
+
+**URL filtering and normalization** (enabled by default):
+
+```python
+app.add_middleware(
+    LedgerMiddleware,
+    ledger_client=ledger,
+    normalize_paths=True,              # Group /users/123 as /users/{id}
+    filter_ignored_paths=True,         # Ignore bot traffic (/.git/, .php files)
+    template_style="curly",            # Use {id} or "colon" for :id
+    capture_query_params=True,         # Include query string in logs
+)
+```
+
+**Custom filtering:**
+
+```python
+app.add_middleware(
+    LedgerMiddleware,
+    ledger_client=ledger,
+    custom_ignored_paths=["/internal", "/debug"],
+    custom_ignored_prefixes=["/private/"],
+    custom_ignored_extensions=[".bak"],
+)
+```
+
+**Custom normalization patterns:**
+
+```python
+import re
+
+patterns = [
+    (re.compile(r"/users/([a-z]+)"), "/users/{username}"),
+    (re.compile(r"/posts/([a-z0-9-]+)"), "/posts/{slug}"),
+]
+
+app.add_middleware(
+    LedgerMiddleware,
+    ledger_client=ledger,
+    normalization_patterns=patterns,
+)
+```
+
+See [FASTAPI_INTEGRATION.md](FASTAPI_INTEGRATION.md) for detailed middleware configuration.
 
 ## Environment Variables
 

@@ -15,9 +15,9 @@ These guides explain how Ledger works if you want to understand the details or c
 
 ## Current Version
 
-**Python SDK v1.0.0** - Production-ready for FastAPI applications
+**Python SDK v1.0.6** - Production-ready for FastAPI applications
 
-Flask and Django support coming soon.
+Includes automatic URL filtering and normalization for cleaner analytics. Architecture ready for Flask and Django integrations.
 
 ## Getting Started
 

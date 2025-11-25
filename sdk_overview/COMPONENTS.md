@@ -12,10 +12,15 @@ LedgerClient (main interface)
     ├─ RateLimiter (prevents hitting server limits)
     ├─ HTTPClient (sends requests)
     ├─ Validator (checks log format)
+    ├─ URLProcessor (filters and normalizes URLs)
     └─ BackgroundFlusher (sends batches)
+
+Middleware (framework integrations)
+    ├─ BaseMiddleware (shared logic for all frameworks)
+    └─ LedgerMiddleware (FastAPI, Flask, Django, etc.)
 ```
 
-You interact with `LedgerClient`. The other components work behind the scenes.
+You interact with `LedgerClient` and framework middleware. The other components work behind the scenes.
 
 ## LedgerClient
 
@@ -99,7 +104,37 @@ An async task that runs continuously in the background, sending logs from the bu
 
 This is what makes Ledger non-blocking. Your code adds logs to the buffer and returns immediately. This task sends them later.
 
+## URLProcessor
+
+Filters out unwanted requests and normalizes URL paths for better analytics.
+
+**Think of it like:** A smart filter that ignores bot traffic and groups similar URLs together.
+
+**Key behavior:**
+- Filters out common attack patterns (`/.git/config`, `/.env`, `.php` files)
+- Normalizes dynamic segments (`/users/123` → `/users/{id}`)
+- Supports UUIDs, MongoDB ObjectIDs, and other ID formats
+- Configurable with custom patterns and filters
+
+Why? Without normalization, `/users/123` and `/users/456` appear as different endpoints. With normalization, they group as `/users/{id}` in analytics.
+
+## BaseMiddleware
+
+Shared logic for all framework integrations (FastAPI, Flask, Django).
+
+**Think of it like:** A foundation that makes adding new frameworks trivial.
+
+**Key behavior:**
+- Manages URLProcessor for filtering and normalization
+- Handles request/exception logging logic
+- Provides consistent behavior across all frameworks
+- Each framework only needs to implement request/response handling
+
+Why? Instead of duplicating 100+ lines of logging logic in each framework middleware, they all inherit from BaseMiddleware and reuse the same code.
+
 ## How They Work Together
+
+### Manual Logging Flow
 
 1. Your code calls `ledger.log_info("message")`
 2. **Validator** checks the log is valid
@@ -110,7 +145,18 @@ This is what makes Ledger non-blocking. Your code adds logs to the buffer and re
 7. **HTTPClient** sends the batch to Ledger
 8. If it fails, **BackgroundFlusher** retries with backoff
 
-All of this happens automatically. You just call `log_info()` and it works.
+### Middleware Logging Flow
+
+1. Request arrives at your framework (FastAPI, Flask, Django)
+2. **Middleware** receives the request
+3. **URLProcessor** checks if path should be filtered (e.g., `/robots.txt`)
+4. If filtered, request continues without logging
+5. If not filtered, **URLProcessor** normalizes the path (`/users/123` → `/users/{id}`)
+6. Request is processed by your endpoint
+7. **Middleware** logs the request via **LedgerClient**
+8. Same flow as manual logging (Validator → Buffer → Flusher → Server)
+
+All of this happens automatically. You just add the middleware and it works.
 
 ## Why This Design?
 

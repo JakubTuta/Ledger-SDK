@@ -39,17 +39,19 @@ Every request to any endpoint is now logged.
 ```python
 {
     "level": "info",
-    "message": "GET /api/users - 200 (45ms)",
+    "message": "GET /api/users/{id} - 200 (45ms)",
     "attributes": {
-        "http": {
+        "endpoint": {
             "method": "GET",
-            "url": "/api/users",
+            "path": "/api/users/{id}",  # Automatically normalized
             "status_code": 200,
             "duration_ms": 45
         }
     }
 }
 ```
+
+Note: URLs with dynamic segments are automatically normalized (e.g., `/api/users/123` becomes `/api/users/{id}`).
 
 ### Failed Requests
 
@@ -81,6 +83,89 @@ app.add_middleware(
     LedgerMiddleware,
     ledger_client=ledger,
     exclude_paths=["/health", "/metrics", "/docs"],
+)
+```
+
+### URL Filtering and Normalization
+
+By default, the middleware automatically filters out common noise and normalizes URL patterns for better analytics.
+
+#### Default Filtering
+
+The middleware automatically ignores requests to:
+- Common attack targets: `/.git/config`, `/.env`, `/robots.txt`, `/favicon.ico`
+- Admin panels: `/wp-admin/`, `/admin/`
+- Suspicious extensions: `.php`, `.asp`, `.aspx`, `.jsp`
+
+This prevents cluttering your logs with bot traffic and malicious scanning attempts.
+
+#### Path Normalization
+
+Dynamic URL segments are automatically normalized to templates:
+
+```python
+"/users/123"        -> "/users/{id}"
+"/posts/456/edit"   -> "/posts/{id}/edit"
+"/api/v1/users/789" -> "/api/v1/users/{id}"
+```
+
+This enables proper grouping in analytics, so all requests to user endpoints appear as `/users/{id}` instead of thousands of separate paths.
+
+**Supported ID formats:**
+- Numeric IDs: `123`, `456`
+- UUIDs: `550e8400-e29b-41d4-a716-446655440000`
+- MongoDB ObjectIDs: `507f1f77bcf86cd799439011`
+- Long hashes: any alphanumeric string 20+ characters
+
+#### Configuration Options
+
+Disable filtering or normalization:
+
+```python
+app.add_middleware(
+    LedgerMiddleware,
+    ledger_client=ledger,
+    filter_ignored_paths=False,  # Log everything, including bots
+    normalize_paths=False,        # Keep original URLs with IDs
+)
+```
+
+Use colon-style templates (`:id` instead of `{id}`):
+
+```python
+app.add_middleware(
+    LedgerMiddleware,
+    ledger_client=ledger,
+    template_style="colon",  # "/users/:id" instead of "/users/{id}"
+)
+```
+
+Add custom filters:
+
+```python
+app.add_middleware(
+    LedgerMiddleware,
+    ledger_client=ledger,
+    custom_ignored_paths=["/internal", "/debug"],
+    custom_ignored_prefixes=["/private/", "/temp/"],
+    custom_ignored_extensions=[".bak", ".old"],
+)
+```
+
+Add custom normalization patterns:
+
+```python
+import re
+
+patterns = [
+    (re.compile(r"/users/([a-z]+)"), "/users/{username}"),
+    (re.compile(r"/posts/([a-z0-9-]+)"), "/posts/{slug}"),
+]
+
+app.add_middleware(
+    LedgerMiddleware,
+    ledger_client=ledger,
+    normalization_patterns=patterns,  # Replaces default patterns
 )
 ```
 
@@ -171,13 +256,20 @@ By default, the middleware doesn't capture:
 It only captures:
 
 - Request method (GET, POST, etc.)
-- Request URL path
-- Query parameters
+- Request URL path (normalized)
+- Query parameters (optional)
 - Status code
 - Duration
 - Exception details (if an exception occurs)
 
 This prevents accidentally logging sensitive data.
+
+Additionally, the automatic URL filtering prevents logging:
+- Bot traffic and malicious scanning attempts
+- Requests to sensitive files (`.env`, `.git/config`)
+- Attack vectors targeting common vulnerabilities
+
+This keeps your logs clean and focused on legitimate application traffic.
 
 ## Next Steps
 
