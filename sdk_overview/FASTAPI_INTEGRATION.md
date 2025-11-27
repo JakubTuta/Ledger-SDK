@@ -101,7 +101,29 @@ This prevents cluttering your logs with bot traffic and malicious scanning attem
 
 #### Path Normalization
 
-Dynamic URL segments are automatically normalized to templates:
+The middleware uses **FastAPI's actual route patterns** for accurate path logging:
+
+```python
+# Your route definition
+@app.get("/users/{user_id}/posts/{post_id}")
+async def get_post(user_id: int, post_id: int):
+    ...
+
+# What gets logged
+"/users/{user_id}/posts/{post_id}"  # Exact parameter names!
+```
+
+This is done by accessing `request.scope["route"].path` after the request is processed.
+
+**Benefits:**
+- ✅ Uses exact parameter names from your route definitions
+- ✅ No false positives from regex patterns
+- ✅ Works with any parameter type (IDs, slugs, usernames, etc.)
+- ✅ Simpler and more reliable than pattern matching
+
+**Fallback for unmatched routes:**
+
+For 404s and unmatched requests, the middleware falls back to regex normalization:
 
 ```python
 "/users/123"        -> "/users/{id}"
@@ -109,12 +131,11 @@ Dynamic URL segments are automatically normalized to templates:
 "/api/v1/users/789" -> "/api/v1/users/{id}"
 ```
 
-This enables proper grouping in analytics, so all requests to user endpoints appear as `/users/{id}` instead of thousands of separate paths.
-
-**Supported ID formats:**
+**Supported ID formats (fallback):**
 - Numeric IDs: `123`, `456`
 - UUIDs: `550e8400-e29b-41d4-a716-446655440000`
 - MongoDB ObjectIDs: `507f1f77bcf86cd799439011`
+- Base64-url-safe: `HzZdSjYiiTw9S_L9Vfgtx...` (with `_` and `-`)
 - Long hashes: any alphanumeric string 20+ characters
 
 #### Configuration Options

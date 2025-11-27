@@ -12,6 +12,7 @@ These guides explain how Ledger works if you want to understand the details or c
 - **[ERROR_HANDLING.md](ERROR_HANDLING.md)** - What happens when things go wrong
 - **[FASTAPI_INTEGRATION.md](FASTAPI_INTEGRATION.md)** - How the FastAPI middleware works
 - **[COMPONENTS.md](COMPONENTS.md)** - Internal pieces of the SDK
+- **[ADDING_FRAMEWORKS.md](ADDING_FRAMEWORKS.md)** - Guide for adding new framework integrations
 
 ## Getting Started
 

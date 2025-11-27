@@ -113,10 +113,30 @@ Filters out unwanted requests and normalizes URL paths for better analytics.
 **Key behavior:**
 - Filters out common attack patterns (`/.git/config`, `/.env`, `.php` files)
 - Normalizes dynamic segments (`/users/123` → `/users/{id}`)
-- Supports UUIDs, MongoDB ObjectIDs, and other ID formats
+- Supports UUIDs, MongoDB ObjectIDs, base64-url-safe IDs, and other ID formats
 - Configurable with custom patterns and filters
 
-Why? Without normalization, `/users/123` and `/users/456` appear as different endpoints. With normalization, they group as `/users/{id}` in analytics.
+**IMPORTANT - Best Practice for Framework Integrations:**
+
+URLProcessor should be used as a **fallback only**. When integrating with a new framework, always check if the framework exposes the actual route pattern first:
+
+```python
+# ✅ PREFERRED: Use framework's route information
+route = request.scope.get("route")  # FastAPI/Starlette
+if route and hasattr(route, "path"):
+    path = route.path  # "/users/{user_id}" - exact parameter names!
+else:
+    # ❌ FALLBACK: Use URLProcessor regex normalization
+    path = url_processor.process_url(request.url.path)  # "/users/{id}"
+```
+
+**Why this matters:**
+- Framework routes use exact parameter names (`{user_id}`, `{post_id}`)
+- URLProcessor uses generic placeholders (`{id}`)
+- Framework routes are always accurate (no false positives)
+- URLProcessor is helpful for 404s, unmatched routes, and bot traffic
+
+Without normalization, `/users/123` and `/users/456` appear as different endpoints. With normalization, they group as `/users/{id}` in analytics.
 
 ## BaseMiddleware
 
