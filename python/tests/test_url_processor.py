@@ -64,6 +64,13 @@ class TestURLProcessor:
         long_hash = "a" * 30
         assert default_processor.process_url(f"/files/{long_hash}") == "/files/{id}"
 
+    def test_normalize_base64_url_safe_identifiers(self, default_processor):
+        base64_id = "HzZdSjYiiTw9S_L9VfgtxhiYdHHlIeruc6frms50HMISlqooPYrTxK1qCGG9jYWOfzsKwDO6GC7a1Q"
+        assert default_processor.process_url(f"/v2/match/active/{base64_id}") == "/v2/match/active/{id}"
+
+        base64_with_hyphen = "abc-def_ghi123456789012345"
+        assert default_processor.process_url(f"/files/{base64_with_hyphen}") == "/files/{id}"
+
     def test_no_normalize_keeps_original(self, no_normalize_processor):
         assert no_normalize_processor.process_url("/users/123") == "/users/123"
         assert no_normalize_processor.process_url("/posts/456") == "/posts/456"

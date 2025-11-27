@@ -1,3 +1,19 @@
+## [1.0.7] - 2025-11-27
+
+### Fixed
+
+- URL normalization pattern now handles base64-url-safe encoded IDs with underscores and hyphens
+- FastAPI middleware now uses actual route patterns (e.g., `/users/{user_id}`) instead of generic normalized paths (e.g., `/users/{id}`)
+
+### Changed
+
+- FastAPI middleware prioritizes `request.scope["route"].path` for accurate parameter names
+- Regex normalization serves as fallback for unmatched routes and 404s
+
+### Added
+
+- Comprehensive test coverage for base64-url-safe IDs and route.path integration
+
 ## [1.0.6] - 2025-11-26
 
 ### Added
@@ -91,6 +107,7 @@
 
 - FastAPI (via LedgerMiddleware)
 
+[1.0.7]: https://github.com/JakubTuta/ledger-sdk/compare/v1.0.6...v1.0.7
 [1.0.6]: https://github.com/JakubTuta/ledger-sdk/compare/v1.0.5...v1.0.6
 [1.0.5]: https://github.com/JakubTuta/ledger-sdk/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/JakubTuta/ledger-sdk/compare/v1.0.3...v1.0.4

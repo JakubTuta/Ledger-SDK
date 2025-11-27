@@ -48,26 +48,48 @@ class LedgerMiddleware(BaseHTTPMiddleware, base_middleware_module.BaseMiddleware
         if self.should_exclude_path(request.url.path):
             return await call_next(request)
 
-        processed_path = self.process_request_path(request.url.path)
-        if processed_path is None:
-            return await call_next(request)
-
         start_time = time.time()
-
-        request_info = {
-            "method": request.method,
-            "path": processed_path,
-        }
-
-        if self.capture_query_params and request.url.query:
-            request_info["query_params"] = str(request.url.query)
 
         try:
             response = await call_next(request)
             duration_ms = (time.time() - start_time) * 1000
+
+            route = request.scope.get("route")
+            if route and hasattr(route, "path"):
+                path = route.path
+            else:
+                path = self.process_request_path(request.url.path)
+                if path is None:
+                    return response
+
+            request_info = {
+                "method": request.method,
+                "path": path,
+            }
+
+            if self.capture_query_params and request.url.query:
+                request_info["query_params"] = str(request.url.query)
+
             self.log_request(request_info, response.status_code, duration_ms)
             return response
         except Exception as exc:
             duration_ms = (time.time() - start_time) * 1000
+
+            route = request.scope.get("route")
+            if route and hasattr(route, "path"):
+                path = route.path
+            else:
+                path = self.process_request_path(request.url.path)
+                if path is None:
+                    raise
+
+            request_info = {
+                "method": request.method,
+                "path": path,
+            }
+
+            if self.capture_query_params and request.url.query:
+                request_info["query_params"] = str(request.url.query)
+
             self.log_exception(request_info, exc, duration_ms)
             raise

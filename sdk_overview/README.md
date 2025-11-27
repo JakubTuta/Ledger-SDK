@@ -13,12 +13,6 @@ These guides explain how Ledger works if you want to understand the details or c
 - **[FASTAPI_INTEGRATION.md](FASTAPI_INTEGRATION.md)** - How the FastAPI middleware works
 - **[COMPONENTS.md](COMPONENTS.md)** - Internal pieces of the SDK
 
-## Current Version
-
-**Python SDK v1.0.6** - Production-ready for FastAPI applications
-
-Includes automatic URL filtering and normalization for cleaner analytics. Architecture ready for Flask and Django integrations.
-
 ## Getting Started
 
 New to Ledger? Start with the [Python SDK README](../python/README.md) for installation and quick start.
