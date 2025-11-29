@@ -1,4 +1,22 @@
-## [1.0.7] - 2025-11-27
+## [1.1.0] - 2025-11-29
+
+### Added
+
+- **Django support** - Full middleware integration for Django applications
+- Django middleware uses `request.resolver_match.route` for exact parameter names
+- Django middleware auto-discovers `LedgerClient` from settings (`LEDGER_CLIENT` or `ledger`)
+- Comprehensive test coverage for Django integration (14 tests, 84% coverage)
+- Simplified Django integration - no middleware wrapper file needed
+- Reorganized examples directory with clear framework separation
+- Documentation guide for adding new framework integrations ([ADDING_FRAMEWORKS.md](../sdk_overview/ADDING_FRAMEWORKS.md))
+
+### Changed
+
+- Django middleware normalizes path converters (`<int:user_id>` → `{user_id}`)
+- Django middleware `ledger_client` parameter is optional (auto-discovered from settings)
+- Simplified examples structure: `examples/fastapi/` and `examples/django/`
+
+## [1.0.7] - 2025-11-29
 
 ### Fixed
 
@@ -9,10 +27,7 @@
 
 - FastAPI middleware prioritizes `request.scope["route"].path` for accurate parameter names
 - Regex normalization serves as fallback for unmatched routes and 404s
-
-### Added
-
-- Comprehensive test coverage for base64-url-safe IDs and route.path integration
+- Updated documentation to emphasize framework routes over regex normalization
 
 ## [1.0.6] - 2025-11-26
 
@@ -107,6 +122,7 @@
 
 - FastAPI (via LedgerMiddleware)
 
+[1.1.0]: https://github.com/JakubTuta/ledger-sdk/compare/v1.0.7...v1.1.0
 [1.0.7]: https://github.com/JakubTuta/ledger-sdk/compare/v1.0.6...v1.0.7
 [1.0.6]: https://github.com/JakubTuta/ledger-sdk/compare/v1.0.5...v1.0.6
 [1.0.5]: https://github.com/JakubTuta/ledger-sdk/compare/v1.0.4...v1.0.5

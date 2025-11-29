@@ -13,8 +13,10 @@ app.add_middleware(LedgerMiddleware, ledger_client=ledger)
 That's it. Every request, response, and exception is now logged to your Ledger dashboard.
 
 [![Python Version](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![PyPI Version](https://img.shields.io/badge/pypi-v1.0.0-blue.svg)](https://pypi.org/project/ledger-sdk/)
+[![PyPI Version](https://img.shields.io/badge/pypi-v1.1.0-blue.svg)](https://pypi.org/project/ledger-sdk/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
+**Supported Frameworks:** FastAPI • Django
 
 ## Why Ledger?
 
@@ -33,6 +35,8 @@ pip install ledger-sdk
 ```
 
 ## Quick Start
+
+### FastAPI
 
 ```python
 from contextlib import asynccontextmanager
@@ -53,6 +57,25 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(LedgerMiddleware, ledger_client=ledger)
+```
+
+### Django
+
+```python
+# settings.py
+import os
+from ledger import LedgerClient
+
+LEDGER_CLIENT = LedgerClient(
+    api_key=os.getenv("LEDGER_API_KEY", "ledger_proj_1_your_api_key"),
+    base_url=os.getenv("LEDGER_BASE_URL", "https://ledger-server.jtuta.cloud")
+)
+
+MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "ledger.integrations.django.LedgerMiddleware",  # Add this
+]
 ```
 
 That's all you need. Start your app and watch the logs flow into your [Ledger dashboard](https://ledger.jtuta.cloud).

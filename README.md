@@ -29,9 +29,13 @@ We built Ledger because we were tired of spending hours setting up logging infra
 
 ## Available Now
 
-**Python SDK** for FastAPI (v1.0.0) - [Install from PyPI](https://pypi.org/project/ledger-sdk/)
+**Python SDK** (v1.1.0) - [Install from PyPI](https://pypi.org/project/ledger-sdk/)
 
-Coming soon: Flask, Django, Express, and more.
+Supports:
+- **FastAPI** - Async-first framework
+- **Django** - Full-stack web framework
+
+Coming soon: Flask, Express, and more.
 
 Want support for your framework? [Open an issue](https://github.com/JakubTuta/Ledger-SDK/issues) and let us know.
 
@@ -40,6 +44,8 @@ Want support for your framework? [Open an issue](https://github.com/JakubTuta/Le
 ```bash
 pip install ledger-sdk
 ```
+
+### FastAPI
 
 ```python
 from contextlib import asynccontextmanager
@@ -62,9 +68,27 @@ app = FastAPI(lifespan=lifespan)
 app.add_middleware(LedgerMiddleware, ledger_client=ledger)
 ```
 
+### Django
+
+```python
+# settings.py
+from ledger import LedgerClient
+
+LEDGER_CLIENT = LedgerClient(
+    api_key="ledger_proj_1_your_api_key",
+    base_url="https://ledger-server.jtuta.cloud"
+)
+
+MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "ledger.integrations.django.LedgerMiddleware",  # Add this
+]
+```
+
 That's all you need. Start your app and watch the logs flow into your [Ledger dashboard](https://ledger.jtuta.cloud).
 
-[Full documentation](python/) • [Get API key](https://ledger.jtuta.cloud) • [Examples](python/fastapi/examples/)
+[Full documentation](python/) • [Get API key](https://ledger.jtuta.cloud) • [Examples](python/examples/)
 
 ## What You Get
 
