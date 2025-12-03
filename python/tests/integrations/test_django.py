@@ -1,7 +1,6 @@
 from unittest.mock import MagicMock, Mock
 
 import pytest
-
 from ledger import LedgerClient
 from ledger.integrations.django import LedgerMiddleware
 
@@ -44,9 +43,7 @@ class TestDjangoIntegration:
 
     @pytest.fixture
     def middleware(self, mock_ledger_client, get_response):
-        return LedgerMiddleware(
-            get_response=get_response, ledger_client=mock_ledger_client
-        )
+        return LedgerMiddleware(get_response=get_response, ledger_client=mock_ledger_client)
 
     def test_middleware_logs_request(self, middleware, mock_ledger_client):
         request = MockRequest("/users/123", route="users/<int:user_id>")
@@ -61,7 +58,9 @@ class TestDjangoIntegration:
         assert logged_path == "users/{user_id}"
 
     def test_uses_route_path_not_normalized_path(self, middleware, mock_ledger_client):
-        request = MockRequest("/posts/456/comments/789", route="posts/<post_id>/comments/<comment_id>")
+        request = MockRequest(
+            "/posts/456/comments/789", route="posts/<post_id>/comments/<comment_id>"
+        )
         response = middleware(request)
 
         assert response.status_code == 200
@@ -111,9 +110,7 @@ class TestDjangoIntegration:
 
         assert logged_path == "sessions/{session_id}"
 
-    def test_fallback_to_normalization_for_no_route(
-        self, middleware, mock_ledger_client
-    ):
+    def test_fallback_to_normalization_for_no_route(self, middleware, mock_ledger_client):
         request = MockRequest("/nonexistent/123")
         response = middleware(request)
 
@@ -146,7 +143,7 @@ class TestDjangoIntegration:
         assert not mock_ledger_client._log.called
 
     def test_middleware_logs_exception(self, mock_ledger_client):
-        def get_response_with_exception(request):
+        def get_response_with_exception(_):
             raise ValueError("Test exception")
 
         middleware = LedgerMiddleware(
@@ -166,7 +163,9 @@ class TestDjangoIntegration:
         assert logged_path == "users/{user_id}"
 
     def test_middleware_captures_query_params(self, middleware, mock_ledger_client):
-        request = MockRequest("/users/123", route="users/<int:user_id>", query_string="page=1&limit=10")
+        request = MockRequest(
+            "/users/123", route="users/<int:user_id>", query_string="page=1&limit=10"
+        )
         response = middleware(request)
 
         assert response.status_code == 200

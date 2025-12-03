@@ -2,7 +2,6 @@ from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
-
 from ledger import LedgerClient
 from ledger.integrations.flask import LedgerMiddleware
 
@@ -163,9 +162,7 @@ class TestFlaskIntegration:
         def health():
             return {"status": "ok"}
 
-        LedgerMiddleware(
-            app, ledger_client=mock_ledger_client, exclude_paths=["/health"]
-        )
+        LedgerMiddleware(app, ledger_client=mock_ledger_client, exclude_paths=["/health"])
 
         client = app.test_client()
         response = client.get("/health")
@@ -180,6 +177,7 @@ class TestFlaskIntegration:
         try:
             client.get("/robots.txt")
         except Exception:
+            print("Ignoring 404 for /robots.txt")
             pass
 
         assert not mock_client._log.called
@@ -242,15 +240,14 @@ class TestFlaskIntegration:
         def test_route():
             return {"ok": True}
 
-        LedgerMiddleware(
-            app, ledger_client=mock_ledger_client, filter_ignored_paths=False
-        )
+        LedgerMiddleware(app, ledger_client=mock_ledger_client, filter_ignored_paths=False)
 
         client = app.test_client()
 
         try:
             client.get("/robots.txt")
         except Exception:
+            print("Ignoring 404 for /robots.txt")
             pass
 
         assert mock_ledger_client.log_exception.called
