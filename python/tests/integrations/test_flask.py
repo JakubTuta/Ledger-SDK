@@ -1,3 +1,4 @@
+from contextlib import suppress
 from unittest.mock import MagicMock
 
 import pytest
@@ -174,11 +175,8 @@ class TestFlaskIntegration:
         app, mock_client = app_with_middleware
         client = app.test_client()
 
-        try:
+        with suppress(Exception):
             client.get("/robots.txt")
-        except Exception:
-            print("Ignoring 404 for /robots.txt")
-            pass
 
         assert not mock_client._log.called
         assert not mock_client.log_exception.called
@@ -244,11 +242,8 @@ class TestFlaskIntegration:
 
         client = app.test_client()
 
-        try:
+        with suppress(Exception):
             client.get("/robots.txt")
-        except Exception:
-            print("Ignoring 404 for /robots.txt")
-            pass
 
         assert mock_ledger_client.log_exception.called
 
@@ -289,4 +284,5 @@ class TestFlaskIntegration:
         app.config["TESTING"] = True
 
         with pytest.raises(ValueError, match="LedgerClient not found"):
+            LedgerMiddleware(app)
             LedgerMiddleware(app)
