@@ -36,7 +36,7 @@ class TestDjangoIntegration:
 
     @pytest.fixture
     def get_response(self):
-        def _get_response(request):
+        def _get_response(request):  # noqa: ARG001
             return MockResponse(200)
 
         return _get_response

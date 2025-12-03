@@ -145,7 +145,7 @@ class TestFlaskIntegration:
         app, mock_client = app_with_middleware
         client = app.test_client()
 
-        with pytest.raises(Exception):
+        with pytest.raises(Exception):  # noqa: B017
             client.get("/nonexistent/123")
 
         assert mock_client.log_exception.called
@@ -185,7 +185,7 @@ class TestFlaskIntegration:
         app, mock_client = app_with_middleware
         client = app.test_client()
 
-        with pytest.raises(Exception):
+        with pytest.raises(Exception):  # noqa: B017
             client.get("/error")
 
         assert mock_client.log_exception.called
@@ -284,5 +284,4 @@ class TestFlaskIntegration:
         app.config["TESTING"] = True
 
         with pytest.raises(ValueError, match="LedgerClient not found"):
-            LedgerMiddleware(app)
             LedgerMiddleware(app)

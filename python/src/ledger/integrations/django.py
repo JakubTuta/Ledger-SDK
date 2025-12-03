@@ -1,6 +1,6 @@
 import re
 import time
-from typing import Pattern
+from typing import Any, Callable, Pattern
 
 import ledger.core.base_middleware as base_middleware_module
 import ledger.core.client as client_module
@@ -9,7 +9,7 @@ import ledger.core.client as client_module
 class LedgerMiddleware(base_middleware_module.BaseMiddleware):
     def __init__(
         self,
-        get_response,
+        get_response: Callable[[Any], Any],
         ledger_client: "client_module.LedgerClient | None" = None,
         exclude_paths: list[str] | None = None,
         capture_query_params: bool = True,
@@ -47,7 +47,7 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
         )
         self.get_response = get_response
 
-    def __call__(self, request):
+    def __call__(self, request: Any) -> Any:
         if self.should_exclude_path(request.path):
             return self.get_response(request)
 
@@ -89,7 +89,7 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
             self.log_exception(request_info, exc, duration_ms)
             raise
 
-    def _get_path(self, request) -> str | None:
+    def _get_path(self, request: Any) -> str | None:
         if hasattr(request, "resolver_match") and request.resolver_match:
             route = request.resolver_match.route
             if route:
@@ -98,5 +98,7 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
         return self.process_request_path(request.path)
 
     def _normalize_django_path(self, path: str) -> str:
-        normalized = re.sub(r"<(?:(?P<converter>[^:>]+):)?(?P<parameter>[^>]+)>", r"{\g<parameter>}", path)
+        normalized = re.sub(
+            r"<(?:(?P<converter>[^:>]+):)?(?P<parameter>[^>]+)>", r"{\g<parameter>}", path
+        )
         return normalized

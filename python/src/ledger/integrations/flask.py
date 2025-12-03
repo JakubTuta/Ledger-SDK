@@ -1,11 +1,10 @@
 import re
 import time
-from typing import Pattern
-
-from flask import Flask, g, request
+from typing import Any, NoReturn, Pattern
 
 import ledger.core.base_middleware as base_middleware_module
 import ledger.core.client as client_module
+from flask import Flask, g, request
 
 
 class LedgerMiddleware(base_middleware_module.BaseMiddleware):
@@ -52,13 +51,13 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
         app.after_request(self._after_request)
         app.errorhandler(Exception)(self._handle_exception)
 
-    def _before_request(self):
+    def _before_request(self) -> None:
         if self.should_exclude_path(request.path):
-            return None
+            return
 
         g.ledger_start_time = time.time()
 
-    def _after_request(self, response):
+    def _after_request(self, response: Any) -> Any:
         if not hasattr(g, "ledger_start_time"):
             return response
 
@@ -79,7 +78,7 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
         self.log_request(request_info, response.status_code, duration_ms)
         return response
 
-    def _handle_exception(self, exc: Exception):
+    def _handle_exception(self, exc: Exception) -> NoReturn:
         if not hasattr(g, "ledger_start_time"):
             raise exc
 
