@@ -13,10 +13,10 @@ app.add_middleware(LedgerMiddleware, ledger_client=ledger)
 That's it. Every request, response, and exception is now logged to your Ledger dashboard.
 
 [![Python Version](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![PyPI Version](https://img.shields.io/badge/pypi-v1.1.0-blue.svg)](https://pypi.org/project/ledger-sdk/)
+[![PyPI Version](https://img.shields.io/badge/pypi-v1.2.0-blue.svg)](https://pypi.org/project/ledger-sdk/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-**Supported Frameworks:** FastAPI • Django
+**Supported Frameworks:** FastAPI • Django • Flask
 
 ## Why Ledger?
 
@@ -76,6 +76,25 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "ledger.integrations.django.LedgerMiddleware",  # Add this
 ]
+```
+
+### Flask
+
+```python
+from flask import Flask
+from ledger import LedgerClient
+from ledger.integrations.flask import LedgerMiddleware
+
+app = Flask(__name__)
+
+ledger = LedgerClient(
+    api_key="ledger_proj_1_your_api_key",
+    base_url="https://ledger-server.jtuta.cloud"
+)
+
+app.config["LEDGER_CLIENT"] = ledger
+
+LedgerMiddleware(app)
 ```
 
 That's all you need. Start your app and watch the logs flow into your [Ledger dashboard](https://ledger.jtuta.cloud).

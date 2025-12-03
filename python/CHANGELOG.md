@@ -1,3 +1,19 @@
+## [1.2.0] - 2025-12-03
+
+### Added
+
+- **Flask support** - Full middleware integration for Flask applications
+- Flask middleware uses `request.url_rule.rule` for exact parameter names
+- Flask middleware auto-discovers `LedgerClient` from app config (`LEDGER_CLIENT` or `ledger`)
+- Comprehensive test coverage for Flask integration (16 tests, 94% coverage)
+
+### Changed
+
+- Flask middleware normalizes path converters (`<int:user_id>` → `{user_id}`)
+- Flask middleware `ledger_client` parameter is optional (auto-discovered from app.config)
+- Added `examples/flask/` with complete working Flask application
+- Updated documentation to include Flask in supported frameworks
+
 ## [1.1.0] - 2025-11-29
 
 ### Added
@@ -6,9 +22,6 @@
 - Django middleware uses `request.resolver_match.route` for exact parameter names
 - Django middleware auto-discovers `LedgerClient` from settings (`LEDGER_CLIENT` or `ledger`)
 - Comprehensive test coverage for Django integration (14 tests, 84% coverage)
-- Simplified Django integration - no middleware wrapper file needed
-- Reorganized examples directory with clear framework separation
-- Documentation guide for adding new framework integrations ([ADDING_FRAMEWORKS.md](../sdk_overview/ADDING_FRAMEWORKS.md))
 
 ### Changed
 
@@ -122,6 +135,7 @@
 
 - FastAPI (via LedgerMiddleware)
 
+[1.2.0]: https://github.com/JakubTuta/ledger-sdk/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/JakubTuta/ledger-sdk/compare/v1.0.7...v1.1.0
 [1.0.7]: https://github.com/JakubTuta/ledger-sdk/compare/v1.0.6...v1.0.7
 [1.0.6]: https://github.com/JakubTuta/ledger-sdk/compare/v1.0.5...v1.0.6
