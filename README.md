@@ -13,7 +13,7 @@ app.add_middleware(LedgerMiddleware, ledger_client=ledger)
 
 That's it. Every request, response, and exception is now logged to your Ledger dashboard.
 
-[![Python SDK](https://img.shields.io/badge/python-v1.2.0-blue.svg)](https://pypi.org/project/ledger-sdk/)
+[![Python SDK](https://img.shields.io/badge/python-v1.2.1-blue.svg)](https://pypi.org/project/ledger-sdk/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Downloads](https://img.shields.io/badge/production-ready-brightgreen.svg)]()
 
@@ -29,9 +29,10 @@ We built Ledger because we were tired of spending hours setting up logging infra
 
 ## Available Now
 
-**Python SDK** (v1.2.0) - [Install from PyPI](https://pypi.org/project/ledger-sdk/)
+**Python SDK** (v1.2.1) - [Install from PyPI](https://pypi.org/project/ledger-sdk/)
 
 Supports:
+
 - **FastAPI** - Async-first framework
 - **Django** - Full-stack web framework
 - **Flask** - Lightweight WSGI framework

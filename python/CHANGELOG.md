@@ -1,3 +1,9 @@
+## [1.2.1] - 2025-12-09
+
+### Changed
+
+- Added comprehensive docstrings to LedgerClient class and all public methods for improved API documentation
+
 ## [1.2.0] - 2025-12-03
 
 ### Added
@@ -135,6 +141,7 @@
 
 - FastAPI (via LedgerMiddleware)
 
+[1.2.1]: https://github.com/JakubTuta/ledger-sdk/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/JakubTuta/ledger-sdk/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/JakubTuta/ledger-sdk/compare/v1.0.7...v1.1.0
 [1.0.7]: https://github.com/JakubTuta/ledger-sdk/compare/v1.0.6...v1.0.7

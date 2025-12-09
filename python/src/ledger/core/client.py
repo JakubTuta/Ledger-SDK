@@ -13,6 +13,18 @@ import ledger.core.validator as validator_module
 
 
 class LedgerClient:
+    """Client for sending logs to the Ledger logging service.
+
+    The LedgerClient handles log buffering, batching, rate limiting, and automatic
+    retries with circuit breaker protection. Logs are sent asynchronously in the
+    background to minimize performance impact on your application.
+
+    Example:
+        >>> client = LedgerClient(api_key="ledger_your_api_key")
+    >>> client.log_info("User logged in", {"user_id": "123"})
+    >>> await client.shutdown()
+    """
+
     def __init__(
         self,
         api_key: str,
@@ -27,6 +39,32 @@ class LedgerClient:
         release: str | None = None,
         platform_version: str | None = None,
     ):
+        """Initialize the Ledger client.
+
+        Args:
+            api_key: Your Ledger API key (must start with 'ledger_').
+            base_url: Base URL for the Ledger API. If not provided, uses the default
+                production endpoint.
+            flush_interval: How often (in seconds) to automatically flush buffered logs.
+                Default is from config.
+            flush_size: Maximum number of logs to include in a single batch.
+                Default is from config.
+            max_buffer_size: Maximum number of logs to hold in memory before dropping
+                old logs. Default is from config.
+            http_timeout: Timeout in seconds for HTTP requests. Default is from config.
+            http_pool_size: Maximum number of concurrent HTTP connections.
+                Default is from config.
+            rate_limit_buffer: Safety margin (0-1) for rate limiting. For example, 0.9
+                means use 90% of the allowed rate. Default is from config.
+            environment: Optional environment identifier (e.g., "production", "staging").
+                Attached to all logs.
+            release: Optional release version identifier. Attached to all logs.
+            platform_version: Python version string. Auto-detected if not provided.
+
+        Raises:
+            ValueError: If configuration parameters are invalid (e.g., invalid API key,
+                negative timeouts, invalid URLs).
+        """
         config = config_module.DEFAULT_CONFIG
 
         base_url = base_url or config.base_url
@@ -51,7 +89,10 @@ class LedgerClient:
         self.base_url = base_url
         self.environment = environment
         self.release = release
-        self.platform_version = platform_version or f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+        self.platform_version = (
+            platform_version
+            or f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+        )
 
         self._http_client = http_client_module.HTTPClient(
             base_url=base_url,
@@ -137,6 +178,16 @@ class LedgerClient:
         message: str,
         attributes: dict[str, Any] | None = None,
     ) -> None:
+        """Log an informational message.
+
+        Args:
+            message: The log message to record.
+            attributes: Optional dictionary of custom attributes to attach to the log.
+                Can contain any JSON-serializable values.
+
+        Example:
+            >>> client.log_info("User logged in", {"user_id": "123", "ip": "192.168.1.1"})
+        """
         self._log(
             level="info",
             log_type="console",
@@ -150,6 +201,16 @@ class LedgerClient:
         message: str,
         attributes: dict[str, Any] | None = None,
     ) -> None:
+        """Log an error message.
+
+        Args:
+            message: The error message to record.
+            attributes: Optional dictionary of custom attributes to attach to the log.
+                Can contain any JSON-serializable values.
+
+        Example:
+            >>> client.log_error("Payment failed", {"order_id": "ORD-123", "amount": 99.99})
+        """
         self._log(
             level="error",
             log_type="console",
@@ -164,6 +225,22 @@ class LedgerClient:
         message: str | None = None,
         attributes: dict[str, Any] | None = None,
     ) -> None:
+        """Log an exception with full stack trace.
+
+        Automatically captures the exception type, message, and full stack trace.
+
+        Args:
+            exception: The exception object to log.
+            message: Optional custom message. If not provided, uses str(exception).
+            attributes: Optional dictionary of custom attributes to attach to the log.
+                Can contain any JSON-serializable values.
+
+        Example:
+            >>> try:
+            ...     risky_operation()
+            ... except Exception as e:
+            ...     client.log_exception(e, "Failed to process order", {"order_id": "123"})
+        """
         stack_trace = "".join(
             traceback.format_exception(
                 type(exception),
@@ -233,6 +310,20 @@ class LedgerClient:
         self._buffer.add(validated_log)
 
     def is_healthy(self) -> bool:
+        """Check if the client is operating normally.
+
+        Returns False if any of the following conditions are met:
+        - Circuit breaker is open (too many consecutive failures)
+        - 3 or more consecutive flush failures
+        - Buffer is more than 90% full
+
+        Returns:
+            True if the client is healthy, False otherwise.
+
+        Example:
+            >>> if not client.is_healthy():
+            ...     print("Warning: Ledger client is experiencing issues")
+        """
         flusher_metrics = self._flusher.get_metrics()
 
         if flusher_metrics["circuit_breaker_open"]:
@@ -248,6 +339,22 @@ class LedgerClient:
         return True
 
     def get_health_status(self) -> dict[str, Any]:
+        """Get detailed health status information.
+
+        Returns:
+            Dictionary containing:
+            - status (str): Overall status - "healthy", "degraded", or "unhealthy"
+            - healthy (bool): True if status is "healthy"
+            - issues (list[str] | None): List of current issues, or None if healthy
+            - buffer_utilization_percent (float): Percentage of buffer in use
+            - circuit_breaker_open (bool): Whether circuit breaker is active
+            - consecutive_failures (int): Number of consecutive flush failures
+
+        Example:
+            >>> status = client.get_health_status()
+            >>> if status["status"] != "healthy":
+            ...     print(f"Issues: {status['issues']}")
+        """
         flusher_metrics = self._flusher.get_metrics()
         buffer_utilization = (self._buffer.size() / self._buffer.max_size) * 100
 
@@ -280,10 +387,39 @@ class LedgerClient:
         }
 
     async def shutdown(self, timeout: float = 10.0) -> None:
+        """Gracefully shut down the client and flush remaining logs.
+
+        This method should be called before your application exits to ensure all
+        buffered logs are sent to the server.
+
+        Args:
+            timeout: Maximum time in seconds to wait for pending logs to flush.
+                Default is 10 seconds.
+
+        Example:
+            >>> await client.shutdown()
+            >>> # Or with custom timeout:
+            >>> await client.shutdown(timeout=30.0)
+        """
         await self._flusher.shutdown(timeout=timeout)
         await self._http_client.close()
 
     def get_metrics(self) -> dict[str, Any]:
+        """Get comprehensive metrics about SDK performance and status.
+
+        Returns:
+            Dictionary containing:
+            - sdk: SDK version and uptime information
+            - buffer: Current buffer size, capacity, and dropped logs
+            - flusher: Flush statistics including successes, failures, and timing
+            - rate_limiter: Current rate and limits
+            - errors: Error counts by type
+
+        Example:
+            >>> metrics = client.get_metrics()
+            >>> print(f"Uptime: {metrics['sdk']['uptime_seconds']}s")
+            >>> print(f"Success rate: {metrics['flusher']['successful_flushes']} / {metrics['flusher']['total_flushes']}")
+        """
         from ledger._version import __version__
 
         flusher_metrics = self._flusher.get_metrics()
