@@ -1,3 +1,11 @@
+## [1.2.2] - 2025-12-12
+
+### Fixed
+
+- Fixed RuntimeError when initializing LedgerClient at module level before event loop is running
+- BackgroundFlusher now gracefully handles missing event loop and starts lazily on first log call
+- Resolved "no running event loop" error in Flask and FastAPI applications
+
 ## [1.2.1] - 2025-12-09
 
 ### Changed
@@ -141,6 +149,7 @@
 
 - FastAPI (via LedgerMiddleware)
 
+[1.2.2]: https://github.com/JakubTuta/ledger-sdk/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/JakubTuta/ledger-sdk/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/JakubTuta/ledger-sdk/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/JakubTuta/ledger-sdk/compare/v1.0.7...v1.1.0

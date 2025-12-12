@@ -51,7 +51,15 @@ class BackgroundFlusher:
 
     def start(self) -> None:
         if self._task is None or self._task.done():
-            self._task = asyncio.create_task(self._run())
+            try:
+                asyncio.get_running_loop()
+                self._task = asyncio.create_task(self._run())
+            except RuntimeError:
+                self._task = None
+
+    def ensure_started(self) -> None:
+        if self._task is None or self._task.done():
+            self.start()
 
     async def _run(self) -> None:
         while not self._shutdown_event.is_set():

@@ -271,6 +271,8 @@ class LedgerClient:
         stack_trace: str | None = None,
         attributes: dict[str, Any] | None = None,
     ) -> None:
+        self._flusher.ensure_started()
+
         from ledger._version import __version__
 
         log_entry: dict[str, Any] = {
