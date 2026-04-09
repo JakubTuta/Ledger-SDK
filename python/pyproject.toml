@@ -1,6 +1,6 @@
 [project]
 name = "ledger-sdk"
-version = "1.2.2"
+version = "1.3.0"
 description = "Production-ready observability SDK for Python web applications with FastAPI, Django, and Flask integrations"
 readme = "README.md"
 requires-python = ">=3.10"

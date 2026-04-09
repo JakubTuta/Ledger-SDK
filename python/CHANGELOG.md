@@ -1,3 +1,57 @@
+## [1.3.0] - 2026-04-09
+
+### Added
+
+- **Sync host support** - Flask and Django WSGI applications now actually flush logs via a dedicated daemon thread with its own asyncio event loop (`ThreadedFlusher`)
+- `log_warning()` method on `LedgerClient` for warning-level messages
+- `log_endpoint()` public method on `LedgerClient` replacing internal `_log()` calls from middlewares
+- `shutdown_sync()` method on `LedgerClient` for use in `atexit` handlers and other sync shutdown hooks
+- `path_params` captured and sent for all frameworks (FastAPI `request.path_params`, Flask `request.view_args`, Django `resolver_match.kwargs`)
+- Django middleware now supports async ASGI hosts via `async_capable = True` and `__acall__`
+- `requeue()` method on `LogBuffer` — failed batches are pushed back to the front of the queue instead of being silently dropped
+- `flush_size` now triggers an immediate wakeup of the flusher instead of waiting for the next interval
+- `SendResult` enum in flusher distinguishing `OK`, `DROPPED`, and `RETRY_EXHAUSTED` outcomes
+- Half-open circuit breaker state for probe-based recovery after the timeout window
+- `DEFAULT_RATE_LIMITS` and `DEFAULT_CONSTRAINTS` constants in `config.py` (absorbed from deleted `settings.py`)
+- `ledger._logging` module — all internal SDK log output now goes through `logging.getLogger("ledger")` with a `NullHandler`; configure via standard Python logging
+
+### Fixed
+
+- Flask and Django integrations silently never flushed — no running event loop at client construction time (critical)
+- Batches lost on retry exhaustion — logs are now requeued to the buffer front on failure
+- Shutdown could not drain through an open circuit breaker — breaker is bypassed during shutdown
+- `_run` loop only processed one batch per flush interval — inner drain loop now runs until buffer is empty
+- `flush_size` config had no effect — flusher is now notified via wakeup event when the threshold is reached
+- 400 responses counted as successful flushes — now correctly classified as `DROPPED`
+- Partial 202 responses: `total_logs_sent` now reflects only the accepted count, not the full batch size
+- 429/503 sleep caused double backoff on next retry — sleep is now handled before returning `RETRY_EXHAUSTED`
+- `_circuit_breaker_opened_at` initialized to `None` causing `TypeError` on first arithmetic — now `0.0`
+- Flask `errorhandler(Exception)` prevented downstream error handlers from running — replaced with `got_request_exception` signal
+- `asyncio.Lock` in `LogBuffer.get_batch()` was incompatible with sync callers — replaced with `threading.Lock`
+- `or`-based config defaults silently replaced valid zero-ish values — replaced with `is not None` checks
+- User-Agent hardcoded to `ledger-sdk-python/1.0.0` — now uses the actual installed version
+- Redundant header merge in `HTTPClient.post()` / `get()` removed
+- `typing.Pattern` (deprecated since 3.9) replaced with `re.Pattern` across all files
+- `SettingsManager` was dead indirection returning hardcoded dicts — deleted
+- `Validator._normalize_timestamp()` was a no-op — removed
+- `_validate_attributes()` serialized large attribute dicts twice — fast path added for small typed dicts
+- URL normalization regex `[a-z0-9_-]{20,}` collapsed readable slugs — now requires at least one digit
+- `exclude_paths` stored as `list` causing O(n) lookup per request — changed to `set`
+- FastAPI middleware duplicated route-resolution logic across success and exception branches — extracted to `_resolve_path()`
+- Validator constants were mutable `set` — changed to `frozenset`
+- Rate limiter timestamp deques had no size cap — `maxlen` safety net added
+- `test_shutdown` asserted a tautology (`is_empty() or not is_empty()`) — replaced with a meaningful assertion
+
+### Changed
+
+- `LedgerClient.__init__` detects whether a running event loop exists and selects `BackgroundFlusher` (async mode) or `ThreadedFlusher` (sync mode) automatically
+- Middlewares call `ledger.log_endpoint()` instead of the private `ledger._log()`
+- `exclude_paths` in `BaseMiddleware` is now a `set` (O(1) lookups)
+- `_version.py` uses `importlib.metadata.version("ledger-sdk")` with a hardcoded fallback
+- All internal `sys.stderr.write` calls replaced with `logging.getLogger("ledger")` calls
+- Constraint keys in `Validator.__init__` are now required (`KeyError` on missing key) rather than silently falling back to defaults
+- Buffer drop warnings are throttled to at most once every 5 seconds
+
 ## [1.2.2] - 2025-12-12
 
 ### Fixed
@@ -149,6 +203,7 @@
 
 - FastAPI (via LedgerMiddleware)
 
+[1.3.0]: https://github.com/JakubTuta/ledger-sdk/compare/v1.2.2...v1.3.0
 [1.2.2]: https://github.com/JakubTuta/ledger-sdk/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/JakubTuta/ledger-sdk/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/JakubTuta/ledger-sdk/compare/v1.1.0...v1.2.0
