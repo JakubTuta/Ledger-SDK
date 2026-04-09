@@ -1,6 +1,23 @@
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
+DEFAULT_RATE_LIMITS: dict[str, int] = {
+    "requests_per_minute": 1000,
+    "requests_per_hour": 50000,
+}
+
+DEFAULT_CONSTRAINTS: dict[str, int] = {
+    "max_batch_size": 1000,
+    "max_message_length": 10000,
+    "max_error_message_length": 5000,
+    "max_stack_trace_length": 50000,
+    "max_attributes_size_bytes": 102400,
+    "max_environment_length": 20,
+    "max_release_length": 100,
+    "max_platform_version_length": 50,
+    "max_error_type_length": 255,
+}
+
 
 class LedgerConfig(BaseSettings):
 

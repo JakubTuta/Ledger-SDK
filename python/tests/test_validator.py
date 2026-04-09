@@ -11,6 +11,10 @@ class TestValidator:
             "max_error_message_length": 50,
             "max_stack_trace_length": 500,
             "max_attributes_size_bytes": 1024,
+            "max_environment_length": 20,
+            "max_release_length": 100,
+            "max_platform_version_length": 50,
+            "max_error_type_length": 255,
         }
         return Validator(constraints)
 

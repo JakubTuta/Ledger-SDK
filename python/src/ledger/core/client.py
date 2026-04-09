@@ -1,3 +1,4 @@
+import asyncio
 import sys
 import traceback
 from datetime import datetime, timezone
@@ -8,8 +9,9 @@ import ledger.core.config as config_module
 import ledger.core.flusher as flusher_module
 import ledger.core.http_client as http_client_module
 import ledger.core.rate_limiter as rate_limiter_module
-import ledger.core.settings as settings_module
+import ledger.core.threaded_flusher as threaded_flusher_module
 import ledger.core.validator as validator_module
+from ledger._version import __version__
 
 
 class LedgerClient:
@@ -21,8 +23,8 @@ class LedgerClient:
 
     Example:
         >>> client = LedgerClient(api_key="ledger_your_api_key")
-    >>> client.log_info("User logged in", {"user_id": "123"})
-    >>> await client.shutdown()
+        >>> client.log_info("User logged in", {"user_id": "123"})
+        >>> await client.shutdown()
     """
 
     def __init__(
@@ -67,13 +69,16 @@ class LedgerClient:
         """
         config = config_module.DEFAULT_CONFIG
 
-        base_url = base_url or config.base_url
-        flush_interval = flush_interval or config.flush_interval
-        flush_size = flush_size or config.flush_size
-        max_buffer_size = max_buffer_size or config.max_buffer_size
-        http_timeout = http_timeout or config.http_timeout
-        http_pool_size = http_pool_size or config.http_pool_size
-        rate_limit_buffer = rate_limit_buffer or config.rate_limit_buffer
+        base_url = base_url if base_url is not None else config.base_url
+        flush_interval = flush_interval if flush_interval is not None else config.flush_interval
+        flush_size = flush_size if flush_size is not None else config.flush_size
+        max_buffer_size = max_buffer_size if max_buffer_size is not None else config.max_buffer_size
+        http_timeout = http_timeout if http_timeout is not None else config.http_timeout
+        http_pool_size = http_pool_size if http_pool_size is not None else config.http_pool_size
+        rate_limit_buffer = (
+            rate_limit_buffer if rate_limit_buffer is not None else config.rate_limit_buffer
+        )
+
         self._validate_config(
             api_key=api_key,
             base_url=base_url,
@@ -93,37 +98,55 @@ class LedgerClient:
             platform_version
             or f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
         )
-
-        self._http_client = http_client_module.HTTPClient(
-            base_url=base_url,
-            api_key=api_key,
-            timeout=http_timeout,
-            pool_size=http_pool_size,
-        )
-
-        self._settings_manager = settings_module.SettingsManager()
+        self._flush_size = flush_size
+        self._http_timeout = http_timeout
+        self._http_pool_size = http_pool_size
 
         self._buffer = buffer_module.LogBuffer(max_size=max_buffer_size)
 
-        rate_limits = self._settings_manager.get_rate_limits()
+        rate_limits = config_module.DEFAULT_RATE_LIMITS
         self._rate_limiter = rate_limiter_module.RateLimiter(
             requests_per_minute=rate_limits["requests_per_minute"],
             requests_per_hour=rate_limits["requests_per_hour"],
             buffer=rate_limit_buffer,
         )
 
-        constraints = self._settings_manager.get_constraints()
+        constraints = config_module.DEFAULT_CONSTRAINTS
         self._validator = validator_module.Validator(constraints)
 
-        self._flusher = flusher_module.BackgroundFlusher(
-            buffer=self._buffer,
-            http_client=self._http_client,
-            rate_limiter=self._rate_limiter,
-            flush_interval=flush_interval,
-            max_batch_size=constraints["max_batch_size"],
-        )
+        def _make_http_client() -> http_client_module.HTTPClient:
+            return http_client_module.HTTPClient(
+                base_url=self.base_url,
+                api_key=self.api_key,
+                timeout=self._http_timeout,
+                pool_size=self._http_pool_size,
+            )
 
-        self._flusher.start()
+        try:
+            asyncio.get_running_loop()
+            self._http_client: http_client_module.HTTPClient | None = _make_http_client()
+            self._flusher: flusher_module.BackgroundFlusher | threaded_flusher_module.ThreadedFlusher = flusher_module.BackgroundFlusher(
+                buffer=self._buffer,
+                http_client=self._http_client,
+                rate_limiter=self._rate_limiter,
+                flush_interval=flush_interval,
+                flush_size=flush_size,
+                max_batch_size=constraints["max_batch_size"],
+            )
+            self._flusher.start()
+            self._mode = "async"
+        except RuntimeError:
+            self._http_client = None
+            self._flusher = threaded_flusher_module.ThreadedFlusher(
+                buffer=self._buffer,
+                http_client_factory=_make_http_client,
+                rate_limiter=self._rate_limiter,
+                flush_interval=flush_interval,
+                flush_size=flush_size,
+                max_batch_size=constraints["max_batch_size"],
+            )
+            self._flusher.start()
+            self._mode = "threaded"
 
         self._sdk_start_time = datetime.now(timezone.utc)
 
@@ -196,6 +219,29 @@ class LedgerClient:
             attributes=attributes,
         )
 
+    def log_warning(
+        self,
+        message: str,
+        attributes: dict[str, Any] | None = None,
+    ) -> None:
+        """Log a warning message.
+
+        Args:
+            message: The warning message to record.
+            attributes: Optional dictionary of custom attributes to attach to the log.
+                Can contain any JSON-serializable values.
+
+        Example:
+            >>> client.log_warning("Cache miss rate high", {"rate": 0.85})
+        """
+        self._log(
+            level="warning",
+            log_type="console",
+            importance="standard",
+            message=message,
+            attributes=attributes,
+        )
+
     def log_error(
         self,
         message: str,
@@ -260,6 +306,61 @@ class LedgerClient:
             attributes=attributes,
         )
 
+    def log_endpoint(
+        self,
+        method: str,
+        path: str,
+        status_code: int,
+        duration_ms: float,
+        query_params: str | None = None,
+        path_params: dict[str, Any] | None = None,
+    ) -> None:
+        """Log an HTTP endpoint invocation.
+
+        Args:
+            method: HTTP method (GET, POST, etc.).
+            path: Request path, optionally normalized.
+            status_code: HTTP response status code.
+            duration_ms: Request duration in milliseconds.
+            query_params: Optional raw query string.
+            path_params: Optional dict of path parameter names to their values.
+
+        Example:
+            >>> client.log_endpoint("GET", "/users/{id}", 200, 12.5, path_params={"id": "123"})
+        """
+        if 200 <= status_code < 400:
+            level = "info"
+            importance = "standard"
+        elif 400 <= status_code < 500:
+            level = "warning"
+            importance = "standard"
+        else:
+            level = "error"
+            importance = "high"
+
+        message = f"{method} {path} - {status_code} ({duration_ms:.0f}ms)"
+
+        endpoint_data: dict[str, Any] = {
+            "method": method,
+            "path": path,
+            "status_code": status_code,
+            "duration_ms": round(duration_ms, 2),
+        }
+
+        if query_params:
+            endpoint_data["query_params"] = query_params
+
+        if path_params:
+            endpoint_data["path_params"] = path_params
+
+        self._log(
+            level=level,
+            log_type="endpoint",
+            importance=importance,
+            message=message,
+            attributes={"endpoint": endpoint_data},
+        )
+
     def _log(
         self,
         level: str,
@@ -272,8 +373,6 @@ class LedgerClient:
         attributes: dict[str, Any] | None = None,
     ) -> None:
         self._flusher.ensure_started()
-
-        from ledger._version import __version__
 
         log_entry: dict[str, Any] = {
             "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
@@ -310,6 +409,9 @@ class LedgerClient:
         validated_log = self._validator.validate_log(log_entry)
 
         self._buffer.add(validated_log)
+
+        if self._buffer.size() >= self._flush_size:
+            self._flusher.notify()
 
     def is_healthy(self) -> bool:
         """Check if the client is operating normally.
@@ -382,7 +484,7 @@ class LedgerClient:
         return {
             "status": status,
             "healthy": status == "healthy",
-            "issues": issues if issues else None,
+            "issues": issues or None,
             "buffer_utilization_percent": round(buffer_utilization, 2),
             "circuit_breaker_open": flusher_metrics["circuit_breaker_open"],
             "consecutive_failures": flusher_metrics["consecutive_failures"],
@@ -392,7 +494,7 @@ class LedgerClient:
         """Gracefully shut down the client and flush remaining logs.
 
         This method should be called before your application exits to ensure all
-        buffered logs are sent to the server.
+        buffered logs are sent to the server. For sync applications use shutdown_sync().
 
         Args:
             timeout: Maximum time in seconds to wait for pending logs to flush.
@@ -403,8 +505,30 @@ class LedgerClient:
             >>> # Or with custom timeout:
             >>> await client.shutdown(timeout=30.0)
         """
-        await self._flusher.shutdown(timeout=timeout)
-        await self._http_client.close()
+        if self._mode == "async":
+            await self._flusher.shutdown(timeout=timeout)  # type: ignore[union-attr]
+            if self._http_client is not None:
+                await self._http_client.close()
+        else:
+            self._flusher.shutdown(timeout=timeout)  # type: ignore[union-attr]
+
+    def shutdown_sync(self, timeout: float = 10.0) -> None:
+        """Gracefully shut down the client from synchronous code (Flask, Django).
+
+        Use this instead of shutdown() in sync contexts such as atexit handlers.
+
+        Args:
+            timeout: Maximum time in seconds to wait for pending logs to flush.
+                Default is 10 seconds.
+
+        Example:
+            >>> import atexit
+            >>> atexit.register(client.shutdown_sync)
+        """
+        if self._mode == "threaded":
+            self._flusher.shutdown(timeout=timeout)  # type: ignore[union-attr]
+        else:
+            asyncio.run(self.shutdown(timeout=timeout))
 
     def get_metrics(self) -> dict[str, Any]:
         """Get comprehensive metrics about SDK performance and status.
@@ -422,8 +546,6 @@ class LedgerClient:
             >>> print(f"Uptime: {metrics['sdk']['uptime_seconds']}s")
             >>> print(f"Success rate: {metrics['flusher']['successful_flushes']} / {metrics['flusher']['total_flushes']}")
         """
-        from ledger._version import __version__
-
         flusher_metrics = self._flusher.get_metrics()
         uptime = (datetime.now(timezone.utc) - self._sdk_start_time).total_seconds()
 
@@ -446,6 +568,7 @@ class LedgerClient:
                 "failed_flushes": flusher_metrics["failed_flushes"],
                 "total_logs_sent": flusher_metrics["total_logs_sent"],
                 "total_logs_failed": flusher_metrics["total_logs_failed"],
+                "total_logs_rejected": flusher_metrics["total_logs_rejected"],
                 "consecutive_failures": flusher_metrics["consecutive_failures"],
                 "circuit_breaker_open": flusher_metrics["circuit_breaker_open"],
                 "last_flush_time": flusher_metrics["last_flush_time"],

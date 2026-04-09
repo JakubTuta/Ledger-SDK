@@ -1,12 +1,17 @@
 import re
 import time
-from typing import Any, Callable, Pattern
+from collections.abc import Callable
+from re import Pattern
+from typing import Any
 
 import ledger.core.base_middleware as base_middleware_module
 import ledger.core.client as client_module
 
 
 class LedgerMiddleware(base_middleware_module.BaseMiddleware):
+    sync_capable = True
+    async_capable = True
+
     def __init__(
         self,
         get_response: Callable[[Any], Any],
@@ -47,7 +52,19 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
         )
         self.get_response = get_response
 
+        try:
+            from asgiref.sync import iscoroutinefunction
+
+            self._is_async = iscoroutinefunction(get_response)
+        except ImportError:
+            self._is_async = False
+
     def __call__(self, request: Any) -> Any:
+        if self._is_async:
+            return self.__acall__(request)
+        return self._sync_call(request)
+
+    def _sync_call(self, request: Any) -> Any:
         if self.should_exclude_path(request.path):
             return self.get_response(request)
 
@@ -69,6 +86,10 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
             if self.capture_query_params and request.META.get("QUERY_STRING"):
                 request_info["query_params"] = request.META["QUERY_STRING"]
 
+            path_params = self._get_path_params(request)
+            if path_params:
+                request_info["path_params"] = path_params
+
             self.log_request(request_info, response.status_code, duration_ms)
             return response
         except Exception as exc:
@@ -86,6 +107,60 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
             if self.capture_query_params and request.META.get("QUERY_STRING"):
                 request_info["query_params"] = request.META["QUERY_STRING"]
 
+            path_params = self._get_path_params(request)
+            if path_params:
+                request_info["path_params"] = path_params
+
+            self.log_exception(request_info, exc, duration_ms)
+            raise
+
+    async def __acall__(self, request: Any) -> Any:
+        if self.should_exclude_path(request.path):
+            return await self.get_response(request)
+
+        start_time = time.time()
+
+        try:
+            response = await self.get_response(request)
+            duration_ms = (time.time() - start_time) * 1000
+
+            path = self._get_path(request)
+            if path is None:
+                return response
+
+            request_info = {
+                "method": request.method,
+                "path": path,
+            }
+
+            if self.capture_query_params and request.META.get("QUERY_STRING"):
+                request_info["query_params"] = request.META["QUERY_STRING"]
+
+            path_params = self._get_path_params(request)
+            if path_params:
+                request_info["path_params"] = path_params
+
+            self.log_request(request_info, response.status_code, duration_ms)
+            return response
+        except Exception as exc:
+            duration_ms = (time.time() - start_time) * 1000
+
+            path = self._get_path(request)
+            if path is None:
+                raise
+
+            request_info = {
+                "method": request.method,
+                "path": path,
+            }
+
+            if self.capture_query_params and request.META.get("QUERY_STRING"):
+                request_info["query_params"] = request.META["QUERY_STRING"]
+
+            path_params = self._get_path_params(request)
+            if path_params:
+                request_info["path_params"] = path_params
+
             self.log_exception(request_info, exc, duration_ms)
             raise
 
@@ -96,6 +171,13 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
                 return self._normalize_django_path(route)
 
         return self.process_request_path(request.path)
+
+    def _get_path_params(self, request: Any) -> dict[str, Any] | None:
+        if hasattr(request, "resolver_match") and request.resolver_match:
+            kwargs = getattr(request.resolver_match, "kwargs", None)
+            if kwargs:
+                return {k: str(v) for k, v in kwargs.items()}
+        return None
 
     def _normalize_django_path(self, path: str) -> str:
         normalized = re.sub(

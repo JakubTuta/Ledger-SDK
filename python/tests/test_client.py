@@ -1,4 +1,5 @@
 import pytest
+
 from ledger import LedgerClient
 
 
@@ -101,7 +102,9 @@ class TestLedgerClient:
     @pytest.mark.asyncio
     async def test_shutdown(self, api_key, base_url):
         client = LedgerClient(api_key=api_key, base_url=base_url)
+        client.log_info("m1")
+        client.log_info("m2")
 
         await client.shutdown(timeout=1.0)
 
-        assert client._buffer.is_empty() or not client._buffer.is_empty()
+        assert client._flusher._task is None or client._flusher._task.done()

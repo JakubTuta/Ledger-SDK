@@ -2,6 +2,8 @@ from typing import Any
 
 import httpx
 
+from ledger._version import __version__
+
 
 class HTTPClient:
     def __init__(
@@ -25,7 +27,7 @@ class HTTPClient:
             headers={
                 "Authorization": f"Bearer {self.api_key}",
                 "Content-Type": "application/json",
-                "User-Agent": "ledger-sdk-python/1.0.0",
+                "User-Agent": f"ledger-sdk-python/{__version__}",
             },
         )
 
@@ -35,14 +37,10 @@ class HTTPClient:
         json_data: dict[str, Any],
         headers: dict[str, str] | None = None,
     ) -> httpx.Response:
-        merged_headers = self._client.headers.copy()
-        if headers:
-            merged_headers.update(headers)
-
         response = await self._client.post(
             path,
             json=json_data,
-            headers=merged_headers,
+            headers=headers,
         )
         return response
 
@@ -52,14 +50,10 @@ class HTTPClient:
         params: dict[str, Any] | None = None,
         headers: dict[str, str] | None = None,
     ) -> httpx.Response:
-        merged_headers = self._client.headers.copy()
-        if headers:
-            merged_headers.update(headers)
-
         response = await self._client.get(
             path,
             params=params,
-            headers=merged_headers,
+            headers=headers,
         )
         return response
 

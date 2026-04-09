@@ -14,8 +14,8 @@ class RateLimiter:
         self.limit_per_hour = int(requests_per_hour * buffer)
         self.buffer_ratio = buffer
 
-        self.timestamps_minute: deque[float] = deque()
-        self.timestamps_hour: deque[float] = deque()
+        self.timestamps_minute: deque[float] = deque(maxlen=requests_per_minute * 2)
+        self.timestamps_hour: deque[float] = deque(maxlen=requests_per_hour * 2)
 
     async def wait_if_needed(self) -> None:
         now = time.time()

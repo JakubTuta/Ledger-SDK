@@ -1,6 +1,6 @@
 import time
 from collections.abc import Callable
-from typing import Pattern
+from re import Pattern
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -40,6 +40,12 @@ class LedgerMiddleware(BaseHTTPMiddleware, base_middleware_module.BaseMiddleware
             template_style=template_style,
         )
 
+    def _resolve_path(self, request: Request) -> str | None:
+        route = request.scope.get("route")
+        if route and hasattr(route, "path"):
+            return route.path
+        return self.process_request_path(request.url.path)
+
     async def dispatch(
         self,
         request: Request,
@@ -54,13 +60,9 @@ class LedgerMiddleware(BaseHTTPMiddleware, base_middleware_module.BaseMiddleware
             response = await call_next(request)
             duration_ms = (time.time() - start_time) * 1000
 
-            route = request.scope.get("route")
-            if route and hasattr(route, "path"):
-                path = route.path
-            else:
-                path = self.process_request_path(request.url.path)
-                if path is None:
-                    return response
+            path = self._resolve_path(request)
+            if path is None:
+                return response
 
             request_info = {
                 "method": request.method,
@@ -69,19 +71,18 @@ class LedgerMiddleware(BaseHTTPMiddleware, base_middleware_module.BaseMiddleware
 
             if self.capture_query_params and request.url.query:
                 request_info["query_params"] = str(request.url.query)
+
+            if request.path_params:
+                request_info["path_params"] = dict(request.path_params)
 
             self.log_request(request_info, response.status_code, duration_ms)
             return response
         except Exception as exc:
             duration_ms = (time.time() - start_time) * 1000
 
-            route = request.scope.get("route")
-            if route and hasattr(route, "path"):
-                path = route.path
-            else:
-                path = self.process_request_path(request.url.path)
-                if path is None:
-                    raise
+            path = self._resolve_path(request)
+            if path is None:
+                raise
 
             request_info = {
                 "method": request.method,
@@ -90,6 +91,9 @@ class LedgerMiddleware(BaseHTTPMiddleware, base_middleware_module.BaseMiddleware
 
             if self.capture_query_params and request.url.query:
                 request_info["query_params"] = str(request.url.query)
+
+            if request.path_params:
+                request_info["path_params"] = dict(request.path_params)
 
             self.log_exception(request_info, exc, duration_ms)
             raise

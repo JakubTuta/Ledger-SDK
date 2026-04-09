@@ -12,7 +12,7 @@ class TestFastAPIIntegration:
     @pytest.fixture
     def mock_ledger_client(self):
         client = MagicMock(spec=LedgerClient)
-        client._log = MagicMock()
+        client.log_endpoint = MagicMock()
         return client
 
     @pytest.fixture
@@ -41,12 +41,10 @@ class TestFastAPIIntegration:
         response = client.get("/users/123")
 
         assert response.status_code == 200
-        assert mock_client._log.called
+        assert mock_client.log_endpoint.called
 
-        call_args = mock_client._log.call_args
-        logged_path = call_args.kwargs["attributes"]["endpoint"]["path"]
-
-        assert logged_path == "/users/{user_id}"
+        call_kwargs = mock_client.log_endpoint.call_args.kwargs
+        assert call_kwargs["path"] == "/users/{user_id}"
 
     def test_preserves_parameter_names_from_route(self, app_with_middleware):
         app, mock_client = app_with_middleware
@@ -55,12 +53,10 @@ class TestFastAPIIntegration:
         response = client.get("/posts/456/comments/789")
 
         assert response.status_code == 200
-        assert mock_client._log.called
+        assert mock_client.log_endpoint.called
 
-        call_args = mock_client._log.call_args
-        logged_path = call_args.kwargs["attributes"]["endpoint"]["path"]
-
-        assert logged_path == "/posts/{post_id}/comments/{comment_id}"
+        call_kwargs = mock_client.log_endpoint.call_args.kwargs
+        assert call_kwargs["path"] == "/posts/{post_id}/comments/{comment_id}"
 
     def test_handles_base64_ids_with_route_path(self, app_with_middleware):
         app, mock_client = app_with_middleware
@@ -70,12 +66,10 @@ class TestFastAPIIntegration:
         response = client.get(f"/v2/match/active/{long_id}")
 
         assert response.status_code == 200
-        assert mock_client._log.called
+        assert mock_client.log_endpoint.called
 
-        call_args = mock_client._log.call_args
-        logged_path = call_args.kwargs["attributes"]["endpoint"]["path"]
-
-        assert logged_path == "/v2/match/active/{match_id}"
+        call_kwargs = mock_client.log_endpoint.call_args.kwargs
+        assert call_kwargs["path"] == "/v2/match/active/{match_id}"
 
     def test_fallback_to_normalization_for_404(self, app_with_middleware):
         app, mock_client = app_with_middleware
@@ -84,9 +78,17 @@ class TestFastAPIIntegration:
         response = client.get("/nonexistent/123")
 
         assert response.status_code == 404
-        assert mock_client._log.called
+        assert mock_client.log_endpoint.called
 
-        call_args = mock_client._log.call_args
-        logged_path = call_args.kwargs["attributes"]["endpoint"]["path"]
+        call_kwargs = mock_client.log_endpoint.call_args.kwargs
+        assert call_kwargs["path"] == "/nonexistent/{id}"
 
-        assert logged_path == "/nonexistent/{id}"
+    def test_captures_path_params(self, app_with_middleware):
+        app, mock_client = app_with_middleware
+        client = TestClient(app)
+
+        response = client.get("/users/42")
+
+        assert response.status_code == 200
+        call_kwargs = mock_client.log_endpoint.call_args.kwargs
+        assert call_kwargs["path_params"] == {"user_id": "42"}

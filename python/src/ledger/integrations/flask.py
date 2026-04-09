@@ -1,10 +1,12 @@
 import re
 import time
-from typing import Any, NoReturn, Pattern
+from re import Pattern
+from typing import Any
+
+from flask import Flask, g, got_request_exception, request
 
 import ledger.core.base_middleware as base_middleware_module
 import ledger.core.client as client_module
-from flask import Flask, g, request
 
 
 class LedgerMiddleware(base_middleware_module.BaseMiddleware):
@@ -49,7 +51,7 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
 
         app.before_request(self._before_request)
         app.after_request(self._after_request)
-        app.errorhandler(Exception)(self._handle_exception)
+        got_request_exception.connect(self._on_exception, app)
 
     def _before_request(self) -> None:
         if self.should_exclude_path(request.path):
@@ -75,18 +77,21 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
         if self.capture_query_params and request.query_string:
             request_info["query_params"] = request.query_string.decode()
 
+        if request.view_args:
+            request_info["path_params"] = dict(request.view_args)
+
         self.log_request(request_info, response.status_code, duration_ms)
         return response
 
-    def _handle_exception(self, exc: Exception) -> NoReturn:
+    def _on_exception(self, sender: Any, exception: Exception, **_extra: Any) -> None:  # noqa: ARG002
         if not hasattr(g, "ledger_start_time"):
-            raise exc
+            return
 
         duration_ms = (time.time() - g.ledger_start_time) * 1000
 
         path = self._get_path()
         if path is None:
-            raise exc
+            return
 
         request_info = {
             "method": request.method,
@@ -96,8 +101,7 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
         if self.capture_query_params and request.query_string:
             request_info["query_params"] = request.query_string.decode()
 
-        self.log_exception(request_info, exc, duration_ms)
-        raise exc
+        self.log_exception(request_info, exception, duration_ms)
 
     def _get_path(self) -> str | None:
         if self.normalize_paths and request.url_rule:

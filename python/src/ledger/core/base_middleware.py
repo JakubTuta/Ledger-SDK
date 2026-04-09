@@ -1,4 +1,5 @@
-from typing import Any, Pattern
+from re import Pattern
+from typing import Any
 
 import ledger.core.client as client_module
 import ledger.core.url_processor as url_processor_module
@@ -19,7 +20,7 @@ class BaseMiddleware:
         template_style: str = "curly",
     ):
         self.ledger = ledger_client
-        self.exclude_paths = exclude_paths or []
+        self.exclude_paths: set[str] = set(exclude_paths or [])
         self.capture_query_params = capture_query_params
 
         self.url_processor = url_processor_module.URLProcessor(
@@ -44,36 +45,13 @@ class BaseMiddleware:
         status_code: int,
         duration_ms: float,
     ) -> None:
-        if 200 <= status_code < 400:
-            level = "info"
-            importance = "standard"
-        elif 400 <= status_code < 500:
-            level = "warning"
-            importance = "standard"
-        else:
-            level = "error"
-            importance = "high"
-
-        message = (
-            f"{request_info['method']} {request_info['path']} - {status_code} ({duration_ms:.0f}ms)"
-        )
-
-        endpoint_data = {
-            "method": request_info["method"],
-            "path": request_info["path"],
-            "status_code": status_code,
-            "duration_ms": round(duration_ms, 2),
-        }
-
-        if request_info.get("query_params"):
-            endpoint_data["query_params"] = request_info["query_params"]
-
-        self.ledger._log(
-            level=level,
-            log_type="endpoint",
-            importance=importance,
-            message=message,
-            attributes={"endpoint": endpoint_data},
+        self.ledger.log_endpoint(
+            method=request_info["method"],
+            path=request_info["path"],
+            status_code=status_code,
+            duration_ms=duration_ms,
+            query_params=request_info.get("query_params"),
+            path_params=request_info.get("path_params"),
         )
 
     def log_exception(

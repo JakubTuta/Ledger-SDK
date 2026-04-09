@@ -61,8 +61,14 @@ class TestURLProcessor:
         assert default_processor.process_url(f"/posts/{object_id}") == "/posts/{id}"
 
     def test_normalize_long_identifiers(self, default_processor):
-        long_hash = "a" * 30
+        long_hash = "a1b2c3d4e5f6" * 3
         assert default_processor.process_url(f"/files/{long_hash}") == "/files/{id}"
+
+    def test_slug_not_normalized(self, default_processor):
+        assert (
+            default_processor.process_url("/blog/how-to-write-great-unit-tests")
+            == "/blog/how-to-write-great-unit-tests"
+        )
 
     def test_normalize_base64_url_safe_identifiers(self, default_processor):
         base64_id = "HzZdSjYiiTw9S_L9VfgtxhiYdHHlIeruc6frms50HMISlqooPYrTxK1qCGG9jYWOfzsKwDO6GC7a1Q"

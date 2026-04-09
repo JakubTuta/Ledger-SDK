@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
+
 from ledger import LedgerClient
 from ledger.integrations.flask import LedgerMiddleware
 
@@ -11,7 +12,7 @@ class TestFlaskIntegration:
     @pytest.fixture
     def mock_ledger_client(self):
         client = MagicMock(spec=LedgerClient)
-        client._log = MagicMock()
+        client.log_endpoint = MagicMock()
         client.log_exception = MagicMock()
         return client
 
@@ -64,12 +65,10 @@ class TestFlaskIntegration:
         response = client.get("/users/123")
 
         assert response.status_code == 200
-        assert mock_client._log.called
+        assert mock_client.log_endpoint.called
 
-        call_args = mock_client._log.call_args
-        logged_path = call_args.kwargs["attributes"]["endpoint"]["path"]
-
-        assert logged_path == "/users/{user_id}"
+        call_kwargs = mock_client.log_endpoint.call_args.kwargs
+        assert call_kwargs["path"] == "/users/{user_id}"
 
     def test_uses_route_path_not_normalized_path(self, app_with_middleware):
         app, mock_client = app_with_middleware
@@ -78,12 +77,10 @@ class TestFlaskIntegration:
         response = client.get("/posts/456/comments/789")
 
         assert response.status_code == 200
-        assert mock_client._log.called
+        assert mock_client.log_endpoint.called
 
-        call_args = mock_client._log.call_args
-        logged_path = call_args.kwargs["attributes"]["endpoint"]["path"]
-
-        assert logged_path == "/posts/{post_id}/comments/{comment_id}"
+        call_kwargs = mock_client.log_endpoint.call_args.kwargs
+        assert call_kwargs["path"] == "/posts/{post_id}/comments/{comment_id}"
 
     def test_handles_int_converter(self, app_with_middleware):
         app, mock_client = app_with_middleware
@@ -92,12 +89,10 @@ class TestFlaskIntegration:
         response = client.get("/users/123")
 
         assert response.status_code == 200
-        assert mock_client._log.called
+        assert mock_client.log_endpoint.called
 
-        call_args = mock_client._log.call_args
-        logged_path = call_args.kwargs["attributes"]["endpoint"]["path"]
-
-        assert logged_path == "/users/{user_id}"
+        call_kwargs = mock_client.log_endpoint.call_args.kwargs
+        assert call_kwargs["path"] == "/users/{user_id}"
 
     def test_handles_string_converter(self, app_with_middleware):
         app, mock_client = app_with_middleware
@@ -106,12 +101,10 @@ class TestFlaskIntegration:
         response = client.get("/articles/my-article")
 
         assert response.status_code == 200
-        assert mock_client._log.called
+        assert mock_client.log_endpoint.called
 
-        call_args = mock_client._log.call_args
-        logged_path = call_args.kwargs["attributes"]["endpoint"]["path"]
-
-        assert logged_path == "/articles/{slug}"
+        call_kwargs = mock_client.log_endpoint.call_args.kwargs
+        assert call_kwargs["path"] == "/articles/{slug}"
 
     def test_handles_path_converter(self, app_with_middleware):
         app, mock_client = app_with_middleware
@@ -120,12 +113,10 @@ class TestFlaskIntegration:
         response = client.get("/files/path/to/file.txt")
 
         assert response.status_code == 200
-        assert mock_client._log.called
+        assert mock_client.log_endpoint.called
 
-        call_args = mock_client._log.call_args
-        logged_path = call_args.kwargs["attributes"]["endpoint"]["path"]
-
-        assert logged_path == "/files/{filepath}"
+        call_kwargs = mock_client.log_endpoint.call_args.kwargs
+        assert call_kwargs["path"] == "/files/{filepath}"
 
     def test_handles_uuid_converter(self, app_with_middleware):
         app, mock_client = app_with_middleware
@@ -134,26 +125,23 @@ class TestFlaskIntegration:
         response = client.get("/sessions/550e8400-e29b-41d4-a716-446655440000")
 
         assert response.status_code == 200
-        assert mock_client._log.called
+        assert mock_client.log_endpoint.called
 
-        call_args = mock_client._log.call_args
-        logged_path = call_args.kwargs["attributes"]["endpoint"]["path"]
-
-        assert logged_path == "/sessions/{session_id}"
+        call_kwargs = mock_client.log_endpoint.call_args.kwargs
+        assert call_kwargs["path"] == "/sessions/{session_id}"
 
     def test_fallback_to_normalization_for_404(self, app_with_middleware):
         app, mock_client = app_with_middleware
         client = app.test_client()
 
-        with pytest.raises(Exception):  # noqa: B017
-            client.get("/nonexistent/123")
+        response = client.get("/nonexistent/123")
 
-        assert mock_client.log_exception.called
+        assert response.status_code == 404
+        assert mock_client.log_endpoint.called
 
-        call_args = mock_client.log_exception.call_args
-        logged_path = call_args.kwargs["attributes"]["path"]
-
-        assert logged_path == "/nonexistent/{id}"
+        call_kwargs = mock_client.log_endpoint.call_args.kwargs
+        assert call_kwargs["path"] == "/nonexistent/{id}"
+        assert call_kwargs["status_code"] == 404
 
     def test_middleware_excludes_paths(self, mock_ledger_client):
         app = Flask(__name__)
@@ -169,7 +157,7 @@ class TestFlaskIntegration:
         response = client.get("/health")
 
         assert response.status_code == 200
-        assert not mock_ledger_client._log.called
+        assert not mock_ledger_client.log_endpoint.called
 
     def test_middleware_filters_ignored_paths(self, app_with_middleware):
         app, mock_client = app_with_middleware
@@ -178,7 +166,7 @@ class TestFlaskIntegration:
         with suppress(Exception):
             client.get("/robots.txt")
 
-        assert not mock_client._log.called
+        assert not mock_client.log_endpoint.called
         assert not mock_client.log_exception.called
 
     def test_middleware_logs_exception(self, app_with_middleware):
@@ -190,10 +178,8 @@ class TestFlaskIntegration:
 
         assert mock_client.log_exception.called
 
-        call_args = mock_client.log_exception.call_args
-        logged_path = call_args.kwargs["attributes"]["path"]
-
-        assert logged_path == "/error"
+        call_kwargs = mock_client.log_exception.call_args.kwargs
+        assert call_kwargs["attributes"]["path"] == "/error"
 
     def test_middleware_captures_query_params(self, app_with_middleware):
         app, mock_client = app_with_middleware
@@ -202,12 +188,10 @@ class TestFlaskIntegration:
         response = client.get("/users/123?page=1&limit=10")
 
         assert response.status_code == 200
-        assert mock_client._log.called
+        assert mock_client.log_endpoint.called
 
-        call_args = mock_client._log.call_args
-        query_params = call_args.kwargs["attributes"]["endpoint"].get("query_params")
-
-        assert query_params == "page=1&limit=10"
+        call_kwargs = mock_client.log_endpoint.call_args.kwargs
+        assert call_kwargs.get("query_params") == "page=1&limit=10"
 
     def test_middleware_can_disable_normalization(self, mock_ledger_client):
         app = Flask(__name__)
@@ -223,12 +207,10 @@ class TestFlaskIntegration:
         response = client.get("/users/123")
 
         assert response.status_code == 200
-        assert mock_ledger_client._log.called
+        assert mock_ledger_client.log_endpoint.called
 
-        call_args = mock_ledger_client._log.call_args
-        logged_path = call_args.kwargs["attributes"]["endpoint"]["path"]
-
-        assert logged_path == "/users/123"
+        call_kwargs = mock_ledger_client.log_endpoint.call_args.kwargs
+        assert call_kwargs["path"] == "/users/123"
 
     def test_middleware_can_disable_filtering(self, mock_ledger_client):
         app = Flask(__name__)
@@ -245,7 +227,7 @@ class TestFlaskIntegration:
         with suppress(Exception):
             client.get("/robots.txt")
 
-        assert mock_ledger_client.log_exception.called
+        assert mock_ledger_client.log_endpoint.called
 
     def test_handles_base64_ids_with_route_path(self, app_with_middleware):
         app, mock_client = app_with_middleware
@@ -255,12 +237,10 @@ class TestFlaskIntegration:
         response = client.get(f"/v2/match/active/{long_id}")
 
         assert response.status_code == 200
-        assert mock_client._log.called
+        assert mock_client.log_endpoint.called
 
-        call_args = mock_client._log.call_args
-        logged_path = call_args.kwargs["attributes"]["endpoint"]["path"]
-
-        assert logged_path == "/v2/match/active/{match_id}"
+        call_kwargs = mock_client.log_endpoint.call_args.kwargs
+        assert call_kwargs["path"] == "/v2/match/active/{match_id}"
 
     def test_auto_discovers_client_from_config(self, mock_ledger_client):
         app = Flask(__name__)
@@ -277,7 +257,7 @@ class TestFlaskIntegration:
         response = client.get("/test")
 
         assert response.status_code == 200
-        assert mock_ledger_client._log.called
+        assert mock_ledger_client.log_endpoint.called
 
     def test_raises_error_if_client_not_found(self):
         app = Flask(__name__)
