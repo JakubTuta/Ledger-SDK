@@ -46,6 +46,28 @@ class LedgerConfig(BaseSettings):
         default=0.9, gt=0, le=1, description="Rate limit buffer percentage"
     )
 
+    tracing_enabled: bool = Field(default=True, description="Enable distributed tracing")
+
+    trace_sample_rate: float = Field(
+        default=1.0, ge=0.0, le=1.0, description="Head sample rate for tracing (0.0 to 1.0)"
+    )
+
+    trace_decision_window_ms: float = Field(
+        default=2000.0, gt=0, description="Error-bias hold window in milliseconds"
+    )
+
+    metrics_enabled: bool = Field(default=True, description="Enable custom metrics collection")
+
+    metrics_aggregation_window_s: float = Field(
+        default=10.0, gt=0, description="Pre-aggregation flush interval in seconds"
+    )
+
+    metrics_max_tags_per_metric: int = Field(
+        default=20, gt=0, description="Maximum distinct tag combinations per metric name per flush"
+    )
+
+    service_name: str = Field(default="python", description="Service name attached to all spans")
+
     class Config:
         env_prefix = "LEDGER_"
         case_sensitive = False

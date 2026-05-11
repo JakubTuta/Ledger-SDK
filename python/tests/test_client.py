@@ -1,5 +1,6 @@
 import pytest
 from ledger import LedgerClient
+from ledger._version import __version__
 
 
 class TestLedgerClient:
@@ -94,7 +95,7 @@ class TestLedgerClient:
         assert "flusher" in metrics
         assert "rate_limiter" in metrics
         assert "errors" in metrics
-        assert metrics["sdk"]["version"] == "1.3.0"
+        assert metrics["sdk"]["version"] == __version__
 
         await client.shutdown(timeout=0.1)
 

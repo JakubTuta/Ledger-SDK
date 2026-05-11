@@ -13,7 +13,7 @@ app.add_middleware(LedgerMiddleware, ledger_client=ledger)
 That's it. Every request, response, and exception is now logged to your Ledger dashboard.
 
 [![Python Version](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![PyPI Version](https://img.shields.io/badge/pypi-v1.3.0-blue.svg)](https://pypi.org/project/ledger-sdk/)
+[![PyPI Version](https://img.shields.io/badge/pypi-v1.4.0-blue.svg)](https://pypi.org/project/ledger-sdk/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 **Supported Frameworks:** FastAPI • Django • Flask
@@ -104,6 +104,10 @@ That's all you need. Start your app and watch the logs flow into your [Ledger da
 ## What You Get
 
 **Automatic capture** - Every request, response, and exception. No manual logging code.
+
+**Distributed tracing** - W3C-compatible spans across services. Trace IDs automatically attached to logs emitted inside a span.
+
+**Custom metrics** - Counter, gauge, and histogram APIs with pre-aggregation. One line to track anything.
 
 **Full context** - Stack traces, request headers, response bodies, user attributes. Everything you need to debug.
 

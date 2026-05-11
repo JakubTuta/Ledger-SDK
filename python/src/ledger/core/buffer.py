@@ -12,6 +12,8 @@ class LogBuffer:
     def __init__(self, max_size: int = 10000):
         self.max_size = max_size
         self._queue: deque[dict[str, Any]] = deque()
+        self._span_queue: deque[dict[str, Any]] = deque()
+        self._metrics_queue: deque[dict[str, Any]] = deque()
         self._lock = threading.Lock()
         self._dropped_count = 0
         self._last_warn_time = 0.0
@@ -39,6 +41,49 @@ class LogBuffer:
                 self._dropped_count += dropped
                 self._maybe_warn_dropped()
             return len(fit)
+
+    def add_span(self, span_dict: dict[str, Any]) -> None:
+        with self._lock:
+            if len(self._span_queue) >= self.max_size:
+                self._span_queue.popleft()
+                self._dropped_count += 1
+            self._span_queue.append(span_dict)
+
+    def get_span_batch(self, max_batch_size: int) -> list[dict[str, Any]]:
+        with self._lock:
+            n = min(len(self._span_queue), max_batch_size)
+            return [self._span_queue.popleft() for _ in range(n)]
+
+    def requeue_spans(self, batch: list[dict[str, Any]]) -> None:
+        with self._lock:
+            space = self.max_size - len(self._span_queue)
+            fit = batch[:space] if space < len(batch) else batch
+            self._span_queue.extendleft(reversed(fit))
+
+    def spans_empty(self) -> bool:
+        with self._lock:
+            return len(self._span_queue) == 0
+
+    def add_metrics(self, payloads: list[dict[str, Any]]) -> None:
+        with self._lock:
+            for payload in payloads:
+                if len(self._metrics_queue) < self.max_size:
+                    self._metrics_queue.append(payload)
+
+    def get_metrics_batch(self, max_batch_size: int) -> list[dict[str, Any]]:
+        with self._lock:
+            n = min(len(self._metrics_queue), max_batch_size)
+            return [self._metrics_queue.popleft() for _ in range(n)]
+
+    def requeue_metrics(self, batch: list[dict[str, Any]]) -> None:
+        with self._lock:
+            space = self.max_size - len(self._metrics_queue)
+            fit = batch[:space] if space < len(batch) else batch
+            self._metrics_queue.extendleft(reversed(fit))
+
+    def metrics_empty(self) -> bool:
+        with self._lock:
+            return len(self._metrics_queue) == 0
 
     def size(self) -> int:
         with self._lock:

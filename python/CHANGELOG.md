@@ -1,3 +1,53 @@
+## [1.4.0] - 2026-05-11
+
+### Added
+
+- **Distributed tracing** — full OpenTelemetry-compatible tracing with W3C `traceparent` propagation
+  - `ledger.tracing` module: `Tracer`, `Span`, `SpanKind`, `SpanStatus`, `SpanEvent`, `get_tracer()`, `get_current_span()`
+  - `Tracer.start_as_current_span()` context manager — async-safe via `contextvars`, works in asyncio and threads
+  - `Tracer.activate_span()` / `Tracer.deactivate_span()` for manual span lifecycle (Flask, SQLAlchemy)
+  - W3C traceparent extract (`propagation.extract()`) and inject (`propagation.inject()`) helpers
+  - `ErrorBiasedHeadSampler` — deterministic head sampling by `trace_id` hash with error-bias upgrade: traces containing errors or exceptions are always sent regardless of sample rate
+  - `TraceDecisionBuffer` — holds `RECORD_ONLY` spans in memory; upgrades entire trace to `RECORD_AND_SEND` on error; drops after configurable window (`LEDGER_TRACE_DECISION_WINDOW_MS`, default 2000ms)
+- **Custom metrics API** — pre-aggregated counter / gauge / histogram with 10s flush windows
+  - `ledger.metrics` module: `counter()`, `gauge()`, `histogram()` module-level helpers using the default client
+  - `client.metrics.counter()`, `client.metrics.gauge()`, `client.metrics.histogram()` on `LedgerClient`
+  - `Aggregator` pre-aggregates in-process; counters sum, gauges keep last value, histograms compute min/max/sum/count/buckets
+  - Cardinality cap: max 20 distinct tag combinations per metric name per flush window (`LEDGER_METRICS_MAX_TAGS_PER_METRIC`); warning logged once per metric per process lifetime on overflow
+- **Log ↔ trace correlation** — `trace_id` and `span_id` automatically attached to log entries emitted inside an active span; zero overhead when tracing unused
+- **HTTP client instrumentation** (opt-in, call `install()`)
+  - `ledger.integrations.requests` — patches `requests.Session.send`; propagates `traceparent`, sets CLIENT span attributes, records exceptions
+  - `ledger.integrations.httpx` — patches both `httpx.Client.send` (sync) and `httpx.AsyncClient.send` (async)
+- **Database instrumentation** (opt-in, call `instrument(engine)`)
+  - `ledger.integrations.sqlalchemy` — instruments any SQLAlchemy engine via event listeners; spans named `db.query` with `db.system`, `db.statement` (truncated to 1 KB), `db.rows_affected`
+- **Framework SERVER span auto-instrumentation** — FastAPI, Django, Flask middlewares now create SERVER spans for each request; W3C context extracted from incoming headers; `http.method`, `http.route`, `http.url`, `http.client_ip`, `user_agent.original`, `http.status_code` attributes set automatically; exceptions recorded on the span; 5xx responses set `status=ERROR`
+- `ledger.integrations.common` — shared `http_server_span()` context manager and `django_meta_to_headers()` helper used by all framework middlewares
+- New `LedgerClient` constructor parameters: `service_name`, `tracing_enabled`, `trace_sample_rate`, `trace_decision_window_ms`, `metrics_enabled`, `metrics_aggregation_window_s`, `metrics_max_tags_per_metric`
+- New environment variables (all additive, no existing vars changed):
+  - `LEDGER_TRACING_ENABLED` (default `true`)
+  - `LEDGER_TRACE_SAMPLE_RATE` (default `1.0`)
+  - `LEDGER_TRACE_DECISION_WINDOW_MS` (default `2000`)
+  - `LEDGER_METRICS_ENABLED` (default `true`)
+  - `LEDGER_METRICS_AGGREGATION_WINDOW_S` (default `10`)
+  - `LEDGER_METRICS_MAX_TAGS_PER_METRIC` (default `20`)
+  - `LEDGER_SERVICE_NAME` (default `python`)
+- Span and metric payloads routed through the existing buffer and flusher: spans → `POST /api/v1/ingest/spans/batch`; metrics → `POST /api/v1/ingest/metrics/batch`; both included in graceful shutdown drain
+
+### Changed
+
+- `LedgerClient` now exposes `tracer: Tracer | None` and `metrics: MetricsAPI | None` as public attributes
+- `LedgerClient.shutdown()` and `shutdown_sync()` stop the metrics aggregation timer before flushing
+- `LogBuffer` extended with per-type queues for spans and metrics (backward-compatible: existing log methods unchanged)
+- `BackgroundFlusher._run()` drains spans and metrics queues after each log flush cycle
+- `ledger/__init__.py` exports `Tracer`, `Span`, `SpanKind`, `SpanStatus`, `get_tracer`, `get_current_span`, `MetricsAPI`
+
+### Backwards Compatible
+
+- All existing log APIs (`log_info`, `log_warning`, `log_error`, `log_exception`, `log_endpoint`) unchanged
+- Existing middleware behavior preserved; tracing is additive — set `LEDGER_TRACING_ENABLED=false` to disable
+- Existing `/api/v1/ingest/batch` log endpoint payload schema unchanged
+- Users who do not adopt tracing will not see `trace_id` on their logs
+
 ## [1.3.0] - 2026-04-09
 
 ### Added
@@ -203,6 +253,7 @@
 
 - FastAPI (via LedgerMiddleware)
 
+[1.4.0]: https://github.com/JakubTuta/ledger-sdk/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/JakubTuta/ledger-sdk/compare/v1.2.2...v1.3.0
 [1.2.2]: https://github.com/JakubTuta/ledger-sdk/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/JakubTuta/ledger-sdk/compare/v1.2.0...v1.2.1
