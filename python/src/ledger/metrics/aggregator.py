@@ -172,7 +172,7 @@ class Aggregator:
                                 "le": b if b != float("inf") else "+Inf",
                                 "n": n,
                             }
-                            for b, n in zip(HistogramAggValue.BUCKETS, agg.bucket_counts)
+                            for b, n in zip(HistogramAggValue.BUCKETS, agg.bucket_counts, strict=False)
                         ],
                     }
                 )

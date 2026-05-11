@@ -101,12 +101,7 @@ class Tracer:
             e.name == "exception" for e in span.events
         )
 
-        if decision == sampler_module.SamplingDecision.RECORD_AND_SEND:
-            held_spans = self._decision_buffer.upgrade_and_flush(span.trace_id)
-            for held in held_spans:
-                self._on_span_end(held)
-            self._on_span_end(span)
-        elif has_error:
+        if decision == sampler_module.SamplingDecision.RECORD_AND_SEND or has_error:
             held_spans = self._decision_buffer.upgrade_and_flush(span.trace_id)
             for held in held_spans:
                 self._on_span_end(held)

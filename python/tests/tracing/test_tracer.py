@@ -1,9 +1,9 @@
 from unittest.mock import MagicMock
 
+import ledger.tracing.buffer as trace_buffer_module
 import ledger.tracing.sampler as sampler_module
 import ledger.tracing.span as span_module
 import ledger.tracing.tracer as tracer_module
-import ledger.tracing.buffer as trace_buffer_module
 
 
 def _make_tracer(rate=1.0, on_span_end=None):
@@ -53,10 +53,9 @@ def test_start_as_current_span_sets_current():
 
 def test_nested_spans_set_parent():
     tracer, _ = _make_tracer()
-    with tracer.start_as_current_span("outer") as outer:
-        with tracer.start_as_current_span("inner") as inner:
-            assert inner.parent_span_id == outer.span_id
-            assert inner.trace_id == outer.trace_id
+    with tracer.start_as_current_span("outer") as outer, tracer.start_as_current_span("inner") as inner:
+        assert inner.parent_span_id == outer.span_id
+        assert inner.trace_id == outer.trace_id
 
 
 def test_record_only_held_in_buffer():

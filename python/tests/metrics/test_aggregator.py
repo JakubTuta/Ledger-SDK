@@ -1,4 +1,3 @@
-import time
 
 import ledger.metrics.aggregator as aggregator_module
 

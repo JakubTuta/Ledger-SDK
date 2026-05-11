@@ -1,4 +1,5 @@
 import pytest
+
 from ledger import LedgerClient
 from ledger._version import __version__
 

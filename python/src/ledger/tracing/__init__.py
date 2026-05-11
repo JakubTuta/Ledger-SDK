@@ -13,11 +13,11 @@ def get_tracer() -> Tracer | None:
 
 
 __all__ = [
-    "Tracer",
     "Span",
+    "SpanEvent",
     "SpanKind",
     "SpanStatus",
-    "SpanEvent",
-    "get_tracer",
+    "Tracer",
     "get_current_span",
+    "get_tracer",
 ]

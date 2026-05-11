@@ -1,6 +1,6 @@
 [project]
 name = "ledger-sdk"
-version = "1.4.0"
+version = "1.4.1"
 description = "Production-ready observability SDK for Python web applications with FastAPI, Django, and Flask integrations"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -29,8 +29,8 @@ classifiers = [
 
 dependencies = [
     "httpx>=0.25.0",
-    "pydantic>=1.4.0",
-    "pydantic-settings>=1.4.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
 ]
 
 [project.optional-dependencies]
@@ -144,12 +144,11 @@ select = [
     "RUF",
 ]
 ignore = [
-    "ANN101",
-    "ANN102",
     "ANN204",
     "ANN401",
     "S101",
     "PLR0913",
+    "PLR0915",
     "PLR2004",
     "PLR0912",
     "PLW3301",

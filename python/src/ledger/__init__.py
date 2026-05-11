@@ -5,12 +5,12 @@ from ledger.tracing import Span, SpanKind, SpanStatus, Tracer, get_current_span,
 
 __all__ = [
     "LedgerClient",
-    "__version__",
-    "Tracer",
+    "MetricsAPI",
     "Span",
     "SpanKind",
     "SpanStatus",
-    "get_tracer",
+    "Tracer",
+    "__version__",
     "get_current_span",
-    "MetricsAPI",
+    "get_tracer",
 ]

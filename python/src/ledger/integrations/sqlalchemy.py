@@ -12,11 +12,11 @@ def instrument(engine: Any) -> None:
     @event.listens_for(engine, "before_cursor_execute")
     def before_cursor_execute(
         conn: Any,
-        cursor: Any,
+        _cursor: Any,
         statement: str,
-        parameters: Any,
-        context: Any,
-        executemany: bool,
+        _parameters: Any,
+        _context: Any,
+        _executemany: bool,
     ) -> None:
         tracer = tracing_module.get_tracer()
         if tracer is None:
@@ -38,10 +38,10 @@ def instrument(engine: Any) -> None:
     def after_cursor_execute(
         conn: Any,
         cursor: Any,
-        statement: str,
-        parameters: Any,
-        context: Any,
-        executemany: bool,
+        _statement: str,
+        _parameters: Any,
+        _context: Any,
+        _executemany: bool,
     ) -> None:
         tracer = tracing_module.get_tracer()
         if tracer is None or not hasattr(conn, "_ledger_spans") or not conn._ledger_spans:

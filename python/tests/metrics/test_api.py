@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock
 
-import ledger.metrics.api as api_module
 import ledger.metrics.aggregator as aggregator_module
+import ledger.metrics.api as api_module
 
 
 def _make_api():
