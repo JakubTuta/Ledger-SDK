@@ -77,7 +77,9 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
             return self._sync_call_no_tracing(request, start_time)
 
         headers = common_module.django_meta_to_headers(request.META)
-        url = request.build_absolute_uri() if hasattr(request, "build_absolute_uri") else request.path
+        url = (
+            request.build_absolute_uri() if hasattr(request, "build_absolute_uri") else request.path
+        )
         client_ip = request.META.get("REMOTE_ADDR")
         user_agent = request.META.get("HTTP_USER_AGENT")
 
@@ -177,7 +179,9 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
             return await self._async_call_no_tracing(request, start_time)
 
         headers = common_module.django_meta_to_headers(request.META)
-        url = request.build_absolute_uri() if hasattr(request, "build_absolute_uri") else request.path
+        url = (
+            request.build_absolute_uri() if hasattr(request, "build_absolute_uri") else request.path
+        )
         client_ip = request.META.get("REMOTE_ADDR")
         user_agent = request.META.get("HTTP_USER_AGENT")
 

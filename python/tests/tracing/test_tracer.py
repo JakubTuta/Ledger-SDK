@@ -11,12 +11,15 @@ def _make_tracer(rate=1.0, on_span_end=None):
         on_span_end = MagicMock()
     sampler = sampler_module.ErrorBiasedHeadSampler(rate=rate)
     decision_buffer = trace_buffer_module.TraceDecisionBuffer(window_ms=2000)
-    return tracer_module.Tracer(
-        service_name="test-svc",
-        sampler=sampler,
-        on_span_end=on_span_end,
-        decision_buffer=decision_buffer,
-    ), on_span_end
+    return (
+        tracer_module.Tracer(
+            service_name="test-svc",
+            sampler=sampler,
+            on_span_end=on_span_end,
+            decision_buffer=decision_buffer,
+        ),
+        on_span_end,
+    )
 
 
 def test_start_span_creates_span():
@@ -53,7 +56,10 @@ def test_start_as_current_span_sets_current():
 
 def test_nested_spans_set_parent():
     tracer, _ = _make_tracer()
-    with tracer.start_as_current_span("outer") as outer, tracer.start_as_current_span("inner") as inner:
+    with (
+        tracer.start_as_current_span("outer") as outer,
+        tracer.start_as_current_span("inner") as inner,
+    ):
         assert inner.parent_span_id == outer.span_id
         assert inner.trace_id == outer.trace_id
 

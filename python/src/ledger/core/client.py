@@ -168,7 +168,9 @@ class LedgerClient:
         try:
             asyncio.get_running_loop()
             self._http_client: http_client_module.HTTPClient | None = _make_http_client()
-            self._flusher: flusher_module.BackgroundFlusher | threaded_flusher_module.ThreadedFlusher = flusher_module.BackgroundFlusher(
+            self._flusher: (
+                flusher_module.BackgroundFlusher | threaded_flusher_module.ThreadedFlusher
+            ) = flusher_module.BackgroundFlusher(
                 buffer=self._buffer,
                 http_client=self._http_client,
                 rate_limiter=self._rate_limiter,

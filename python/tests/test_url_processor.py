@@ -54,7 +54,9 @@ class TestURLProcessor:
     def test_normalize_uuid_paths(self, default_processor):
         uuid = "550e8400-e29b-41d4-a716-446655440000"
         assert default_processor.process_url(f"/users/{uuid}") == "/users/{id}"
-        assert default_processor.process_url(f"/api/sessions/{uuid}/data") == "/api/sessions/{id}/data"
+        assert (
+            default_processor.process_url(f"/api/sessions/{uuid}/data") == "/api/sessions/{id}/data"
+        )
 
     def test_normalize_mongodb_objectid(self, default_processor):
         object_id = "507f1f77bcf86cd799439011"
@@ -72,7 +74,10 @@ class TestURLProcessor:
 
     def test_normalize_base64_url_safe_identifiers(self, default_processor):
         base64_id = "HzZdSjYiiTw9S_L9VfgtxhiYdHHlIeruc6frms50HMISlqooPYrTxK1qCGG9jYWOfzsKwDO6GC7a1Q"
-        assert default_processor.process_url(f"/v2/match/active/{base64_id}") == "/v2/match/active/{id}"
+        assert (
+            default_processor.process_url(f"/v2/match/active/{base64_id}")
+            == "/v2/match/active/{id}"
+        )
 
         base64_with_hyphen = "abc-def_ghi123456789012345"
         assert default_processor.process_url(f"/files/{base64_with_hyphen}") == "/files/{id}"
@@ -118,7 +123,10 @@ class TestURLProcessor:
         assert processor.process_url("/posts/my-first-post") == "/posts/{slug}"
 
     def test_complex_path_normalization(self, default_processor):
-        assert default_processor.process_url("/users/123/posts/456/comments/789") == "/users/{id}/posts/{id}/comments/{id}"
+        assert (
+            default_processor.process_url("/users/123/posts/456/comments/789")
+            == "/users/{id}/posts/{id}/comments/{id}"
+        )
 
     def test_trailing_slash_handling(self, default_processor):
         assert default_processor.process_url("/users/123/") == "/users/{id}/"

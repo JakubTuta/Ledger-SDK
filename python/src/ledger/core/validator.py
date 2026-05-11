@@ -99,13 +99,10 @@ class Validator:
             )
             return {"value": str(attributes)}
 
-        if (
-            len(attributes) <= self._ATTR_FAST_PATH_MAX_KEYS
-            and all(
-                isinstance(v, (int, float, bool, type(None)))
-                or (isinstance(v, str) and len(v) <= self._ATTR_FAST_PATH_MAX_VALUE_CHARS)
-                for v in attributes.values()
-            )
+        if len(attributes) <= self._ATTR_FAST_PATH_MAX_KEYS and all(
+            isinstance(v, (int, float, bool, type(None)))
+            or (isinstance(v, str) and len(v) <= self._ATTR_FAST_PATH_MAX_VALUE_CHARS)
+            for v in attributes.values()
         ):
             return attributes
 
@@ -124,9 +121,7 @@ class Validator:
             return attributes
 
         except (TypeError, ValueError) as e:
-            logging_module.get_logger().warning(
-                "Attributes not JSON serializable: %s, removing", e
-            )
+            logging_module.get_logger().warning("Attributes not JSON serializable: %s, removing", e)
             return {}
 
     def _truncate_attributes(self, attributes: dict[str, Any], max_bytes: int) -> dict[str, Any]:

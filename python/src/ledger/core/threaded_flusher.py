@@ -92,9 +92,7 @@ class ThreadedFlusher:
     def shutdown(self, timeout: float = 10.0) -> None:
         if not self._loop or not self._inner:
             return
-        future = asyncio.run_coroutine_threadsafe(
-            self._inner.shutdown(timeout=timeout), self._loop
-        )
+        future = asyncio.run_coroutine_threadsafe(self._inner.shutdown(timeout=timeout), self._loop)
         try:
             future.result(timeout=timeout + 2.0)
         except Exception as e:

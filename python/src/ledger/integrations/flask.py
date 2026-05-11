@@ -128,7 +128,7 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
         self.log_request(request_info, response.status_code, duration_ms)
         return response
 
-    def _on_exception(self, sender: Any, exception: Exception, **_extra: Any) -> None:  # noqa: ARG002
+    def _on_exception(self, _sender: Any, exception: Exception, **_extra: Any) -> None:
         if not hasattr(g, "ledger_start_time"):
             return
 

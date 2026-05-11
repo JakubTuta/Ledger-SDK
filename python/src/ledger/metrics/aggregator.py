@@ -17,7 +17,22 @@ class GaugeAggValue:
 
 
 class HistogramAggValue:
-    BUCKETS: list[float] = [1, 2, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000, float("inf")]
+    BUCKETS: list[float] = [
+        1,
+        2,
+        5,
+        10,
+        25,
+        50,
+        100,
+        250,
+        500,
+        1000,
+        2500,
+        5000,
+        10000,
+        float("inf"),
+    ]
 
     def __init__(self) -> None:
         self.count: int = 0
@@ -172,7 +187,9 @@ class Aggregator:
                                 "le": b if b != float("inf") else "+Inf",
                                 "n": n,
                             }
-                            for b, n in zip(HistogramAggValue.BUCKETS, agg.bucket_counts, strict=False)
+                            for b, n in zip(
+                                HistogramAggValue.BUCKETS, agg.bucket_counts, strict=False
+                            )
                         ],
                     }
                 )

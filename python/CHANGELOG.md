@@ -1,3 +1,11 @@
+## [1.4.2] - 2026-05-12
+
+### Fixed
+
+- Fixed ruff linting errors (ARG001 unused arguments in SQLAlchemy event listeners, B905 zip() without strict=, SIM117 nested with statements, PLR0915 too-many-statements)
+- Fixed black formatting across 10 source files
+- Removed references to removed ruff rules ANN101/ANN102
+
 ## [1.4.1] - 2026-05-12
 
 ### Changed
@@ -259,6 +267,7 @@
 
 - FastAPI (via LedgerMiddleware)
 
+[1.4.2]: https://github.com/JakubTuta/ledger-sdk/compare/v1.4.1...v1.4.2
 [1.4.1]: https://github.com/JakubTuta/ledger-sdk/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/JakubTuta/ledger-sdk/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/JakubTuta/ledger-sdk/compare/v1.2.2...v1.3.0
