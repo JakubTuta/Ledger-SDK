@@ -1,3 +1,21 @@
+## [1.5.0] - 2026-05-14
+
+### Added
+
+- **HTTP error response body capture** — all framework middlewares (FastAPI, Flask, Django) now automatically capture and log the response body for HTTP 4xx/5xx responses
+  - Response body stored under `attributes.endpoint.response_body` on the endpoint log entry
+  - Capped at 4 KB; bodies exceeding the limit are truncated with ` ...[truncated]` suffix
+  - FastAPI: consumes and re-buffers the Starlette `body_iterator`; original response is reconstructed and passed through unchanged — no impact on 2xx responses
+  - Flask: reads `response.get_data(as_text=False)` — already buffered, zero streaming overhead
+  - Django: reads `response.content` — already buffered, zero streaming overhead
+  - Captures detail messages from FastAPI `HTTPException` (400, 401, 403, 404, 422, etc.) that previously appeared in the dashboard only as a status code with no explanation
+- `log_endpoint()` accepts new optional `response_body: str | None` parameter (additive, no breaking change)
+- `BaseMiddleware.log_request()` accepts new optional `response_body: str | None` parameter
+
+### Changed
+
+- `base_middleware` exposes `_body_preview(body: bytes) -> str` and `_MAX_ERROR_RESPONSE_BODY_BYTES = 4096` for consistent truncation across all integrations
+
 ## [1.4.2] - 2026-05-12
 
 ### Fixed
@@ -267,6 +285,7 @@
 
 - FastAPI (via LedgerMiddleware)
 
+[1.5.0]: https://github.com/JakubTuta/ledger-sdk/compare/v1.4.2...v1.5.0
 [1.4.2]: https://github.com/JakubTuta/ledger-sdk/compare/v1.4.1...v1.4.2
 [1.4.1]: https://github.com/JakubTuta/ledger-sdk/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/JakubTuta/ledger-sdk/compare/v1.3.0...v1.4.0

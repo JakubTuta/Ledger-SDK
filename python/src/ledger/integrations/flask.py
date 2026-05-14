@@ -125,7 +125,11 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
         if request.view_args:
             request_info["path_params"] = dict(request.view_args)
 
-        self.log_request(request_info, response.status_code, duration_ms)
+        response_body: str | None = None
+        if response.status_code >= 400:
+            response_body = base_middleware_module._body_preview(response.get_data(as_text=False))
+
+        self.log_request(request_info, response.status_code, duration_ms, response_body)
         return response
 
     def _on_exception(self, _sender: Any, exception: Exception, **_extra: Any) -> None:

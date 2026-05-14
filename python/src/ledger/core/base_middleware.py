@@ -4,6 +4,15 @@ from typing import Any
 import ledger.core.client as client_module
 import ledger.core.url_processor as url_processor_module
 
+_MAX_ERROR_RESPONSE_BODY_BYTES: int = 4096
+
+
+def _body_preview(body: bytes) -> str:
+    preview = body[:_MAX_ERROR_RESPONSE_BODY_BYTES].decode("utf-8", errors="replace")
+    if len(body) > _MAX_ERROR_RESPONSE_BODY_BYTES:
+        preview += " ...[truncated]"
+    return preview
+
 
 class BaseMiddleware:
     def __init__(
@@ -44,6 +53,7 @@ class BaseMiddleware:
         request_info: dict[str, Any],
         status_code: int,
         duration_ms: float,
+        response_body: str | None = None,
     ) -> None:
         self.ledger.log_endpoint(
             method=request_info["method"],
@@ -52,6 +62,7 @@ class BaseMiddleware:
             duration_ms=duration_ms,
             query_params=request_info.get("query_params"),
             path_params=request_info.get("path_params"),
+            response_body=response_body,
         )
 
     def log_exception(

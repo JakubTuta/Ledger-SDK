@@ -112,7 +112,12 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
                     path_params = self._get_path_params(request)
                     if path_params:
                         request_info["path_params"] = path_params
-                    self.log_request(request_info, response.status_code, duration_ms)
+
+                    response_body: str | None = None
+                    if response.status_code >= 400:
+                        response_body = base_middleware_module._body_preview(response.content)
+
+                    self.log_request(request_info, response.status_code, duration_ms, response_body)
 
                 return response
             except Exception as exc:
@@ -149,7 +154,11 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
             if path_params:
                 request_info["path_params"] = path_params
 
-            self.log_request(request_info, response.status_code, duration_ms)
+            response_body: str | None = None
+            if response.status_code >= 400:
+                response_body = base_middleware_module._body_preview(response.content)
+
+            self.log_request(request_info, response.status_code, duration_ms, response_body)
             return response
         except Exception as exc:
             duration_ms = (time.time() - start_time) * 1000
@@ -214,7 +223,12 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
                     path_params = self._get_path_params(request)
                     if path_params:
                         request_info["path_params"] = path_params
-                    self.log_request(request_info, response.status_code, duration_ms)
+
+                    response_body: str | None = None
+                    if response.status_code >= 400:
+                        response_body = base_middleware_module._body_preview(response.content)
+
+                    self.log_request(request_info, response.status_code, duration_ms, response_body)
 
                 return response
             except Exception as exc:
@@ -251,7 +265,11 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
             if path_params:
                 request_info["path_params"] = path_params
 
-            self.log_request(request_info, response.status_code, duration_ms)
+            response_body: str | None = None
+            if response.status_code >= 400:
+                response_body = base_middleware_module._body_preview(response.content)
+
+            self.log_request(request_info, response.status_code, duration_ms, response_body)
             return response
         except Exception as exc:
             duration_ms = (time.time() - start_time) * 1000

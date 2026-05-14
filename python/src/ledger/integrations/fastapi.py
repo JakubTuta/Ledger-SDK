@@ -4,6 +4,7 @@ from re import Pattern
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response as StarletteResponse
 from starlette.types import ASGIApp
 
 import ledger.core.base_middleware as base_middleware_module
@@ -93,7 +94,12 @@ class LedgerMiddleware(BaseHTTPMiddleware, base_middleware_module.BaseMiddleware
                         request_info["query_params"] = str(request.url.query)
                     if request.path_params:
                         request_info["path_params"] = dict(request.path_params)  # type: ignore[assignment]
-                    self.log_request(request_info, response.status_code, duration_ms)
+
+                    response_body: str | None = None
+                    if response.status_code >= 400:
+                        response, response_body = await self._buffer_error_response(response)
+
+                    self.log_request(request_info, response.status_code, duration_ms, response_body)
 
                 return response
             except Exception as exc:
@@ -133,7 +139,11 @@ class LedgerMiddleware(BaseHTTPMiddleware, base_middleware_module.BaseMiddleware
             if request.path_params:
                 request_info["path_params"] = dict(request.path_params)  # type: ignore[assignment]
 
-            self.log_request(request_info, response.status_code, duration_ms)
+            response_body: str | None = None
+            if response.status_code >= 400:
+                response, response_body = await self._buffer_error_response(response)
+
+            self.log_request(request_info, response.status_code, duration_ms, response_body)
             return response
         except Exception as exc:
             duration_ms = (time.time() - start_time) * 1000
@@ -150,3 +160,18 @@ class LedgerMiddleware(BaseHTTPMiddleware, base_middleware_module.BaseMiddleware
 
             self.log_exception(request_info, exc, duration_ms)
             raise
+
+    @staticmethod
+    async def _buffer_error_response(response: Response) -> tuple[Response, str]:
+        chunks: list[bytes] = []
+        async for chunk in response.body_iterator:
+            chunks.append(chunk)
+        body = b"".join(chunks)
+        preview = base_middleware_module._body_preview(body)
+        buffered = StarletteResponse(
+            content=body,
+            status_code=response.status_code,
+            headers=dict(response.headers),
+            media_type=response.media_type,
+        )
+        return buffered, preview
