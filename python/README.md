@@ -13,7 +13,7 @@ app.add_middleware(LedgerMiddleware, ledger_client=ledger)
 That's it. Every request, response, and exception is now logged to your Ledger dashboard.
 
 [![Python Version](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![PyPI Version](https://img.shields.io/badge/pypi-v1.5.1-blue.svg)](https://pypi.org/project/ledger-sdk/)
+[![PyPI Version](https://img.shields.io/badge/pypi-v1.5.2-blue.svg)](https://pypi.org/project/ledger-sdk/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 **Supported Frameworks:** FastAPI • Django • Flask
@@ -196,6 +196,139 @@ Ledger adds less than 0.1ms to each request. All network I/O happens in the back
 Your app stays fast even if the Ledger server is slow or down. Logs are batched and sent every 5 seconds or when 1000 logs accumulate.
 
 [Performance benchmarks](../sdk_overview/PERFORMANCE.md)
+
+## Distributed Tracing
+
+Trace requests across services with spans. Traces appear in Ledger's **Trace List** panel and can be pinned as single-trace waterfall panels directly from the dashboard.
+
+### Setup
+
+The tracing module is enabled automatically when you call `LedgerClient(...)`. Get a tracer for your service and start creating spans:
+
+```python
+from ledger import LedgerClient
+from ledger.tracing import get_tracer
+
+ledger = LedgerClient(api_key="...", base_url="https://ledger-server.jtuta.cloud", service_name="my-service")
+tracer = get_tracer()
+```
+
+### Manual spans
+
+```python
+with tracer.start_as_current_span("process-order", attributes={"order_id": 42}) as span:
+    result = process_order(42)
+    span.set_attribute("status", result.status)
+```
+
+### Nested spans (cross-service)
+
+Child spans are automatically linked to the current span via context propagation:
+
+```python
+with tracer.start_as_current_span("api-request") as root:
+    with tracer.start_as_current_span("db-query") as child:
+        rows = await db.execute("SELECT ...")
+```
+
+### Propagate context to downstream services
+
+Inject the W3C `traceparent` header into outgoing HTTP calls so downstream services can continue the trace:
+
+```python
+from ledger.tracing import propagation
+
+with tracer.start_as_current_span("outgoing-call") as span:
+    headers = {}
+    propagation.inject(headers, span)
+    response = httpx.get("https://downstream/api", headers=headers)
+```
+
+In the downstream service, extract the context before starting spans:
+
+```python
+ctx = propagation.extract(request.headers)
+with tracer.start_as_current_span("downstream-handler", parent=ctx):
+    ...
+```
+
+### FastAPI auto-instrumentation
+
+With `LedgerMiddleware`, every request automatically becomes a root span. Spans you create inside request handlers are nested under it:
+
+```python
+app.add_middleware(LedgerMiddleware, ledger_client=ledger)
+
+@app.get("/orders/{id}")
+async def get_order(id: int):
+    tracer = get_tracer()
+    with tracer.start_as_current_span("db-fetch", attributes={"order_id": id}):
+        return await db.get_order(id)
+```
+
+### gRPC client spans
+
+Use a `UnaryUnaryClientInterceptor` to create a span for each outgoing gRPC call and inject the trace context into metadata.
+
+**Critical: call `LedgerClient(...)` before creating any channels.** Interceptors cannot be added to an existing channel.
+
+```python
+import grpc
+from ledger.tracing import get_tracer, propagation
+
+
+class _MutableClientCallDetails:
+    def __init__(self, details, metadata):
+        self.method = details.method
+        self.timeout = details.timeout
+        self.metadata = metadata
+        self.credentials = details.credentials
+        self.wait_for_ready = details.wait_for_ready
+
+
+class TracingClientInterceptor(grpc.aio.UnaryUnaryClientInterceptor):
+    async def intercept_unary_unary(self, continuation, client_call_details, request):
+        tracer = get_tracer()
+        if tracer is None:
+            return await continuation(client_call_details, request)
+
+        method = client_call_details.method
+        if isinstance(method, bytes):
+            method = method.decode()
+
+        with tracer.start_as_current_span(f"grpc.client{method}") as span:
+            carrier: dict[str, str] = {}
+            propagation.inject(carrier, span)
+
+            metadata = list(client_call_details.metadata or [])
+            for k, v in carrier.items():
+                metadata.append((k, v))
+
+            return await continuation(_MutableClientCallDetails(client_call_details, metadata), request)
+```
+
+Pass the interceptor when creating the channel — **every channel**, every time:
+
+```python
+# Initialize ledger FIRST
+ledger = LedgerClient(api_key="...", base_url="https://ledger-server.jtuta.cloud", service_name="my-service")
+
+# Then create channels with the interceptor
+channel = grpc.aio.insecure_channel(
+    "host:port",
+    interceptors=[TracingClientInterceptor()],
+)
+```
+
+A channel created without `interceptors=` will never produce spans, even if the tracer is initialized.
+
+### Trace IDs in logs
+
+Any log emitted inside an active span automatically includes the `trace_id` and `span_id` as attributes, linking logs to traces in the dashboard.
+
+### Viewing traces
+
+Once spans are flowing, open the Ledger dashboard and add a **Trace List** panel. Traces appear within seconds of the flush interval (default 5 s). Click any row to pin it as a single-trace waterfall panel.
 
 ## How It Works
 

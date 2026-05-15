@@ -67,23 +67,36 @@ class Span:
         if self.end_ns is None:
             self.end_ns = time.time_ns()
 
+    _KIND_TO_INT: dict[str, int] = {
+        "internal": 0,
+        "server": 1,
+        "client": 2,
+        "producer": 3,
+        "consumer": 4,
+    }
+    _STATUS_TO_INT: dict[str, int] = {
+        "unset": 0,
+        "ok": 1,
+        "error": 2,
+    }
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "trace_id": self.trace_id,
             "span_id": self.span_id,
-            "parent_span_id": self.parent_span_id,
+            "parent_span_id": self.parent_span_id or "",
             "name": self.name,
-            "kind": self.kind.value,
-            "start_ns": self.start_ns,
-            "end_ns": self.end_ns,
-            "status": self.status.value,
-            "status_message": self.status_message,
-            "attributes": self.attributes,
+            "kind": self._KIND_TO_INT[self.kind.value],
+            "start_unix_nano": self.start_ns,
+            "end_unix_nano": self.end_ns or self.start_ns,
+            "status": self._STATUS_TO_INT[self.status.value],
+            "status_message": self.status_message or "",
+            "attributes": {k: str(v) for k, v in self.attributes.items()},
             "events": [
                 {
                     "name": e.name,
-                    "timestamp_ns": e.timestamp_ns,
-                    "attributes": e.attributes,
+                    "ts_unix_nano": e.timestamp_ns,
+                    "attrs": {k: str(v) for k, v in e.attributes.items()},
                 }
                 for e in self.events
             ],

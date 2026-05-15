@@ -13,7 +13,7 @@ app.add_middleware(LedgerMiddleware, ledger_client=ledger)
 
 That's it. Every request, response, and exception is now logged to your Ledger dashboard.
 
-[![Python SDK](https://img.shields.io/badge/python-v1.5.1-blue.svg)](https://pypi.org/project/ledger-sdk/)
+[![Python SDK](https://img.shields.io/badge/python-v1.5.2-blue.svg)](https://pypi.org/project/ledger-sdk/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Downloads](https://img.shields.io/badge/production-ready-brightgreen.svg)]()
 

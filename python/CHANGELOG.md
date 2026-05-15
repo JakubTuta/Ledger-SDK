@@ -1,3 +1,9 @@
+## [1.5.2] - 2026-05-15
+
+### Fixed
+
+- `Span.to_dict()` emitted wrong field names and types for the span wire format — `start_ns`/`end_ns` renamed to `start_unix_nano`/`end_unix_nano`, `kind` and `status` changed from enum strings to integers, `parent_span_id: None` coerced to `""`, `attributes` values coerced to `str`, span event fields renamed from `timestamp_ns`/`attributes` to `ts_unix_nano`/`attrs` — mismatches caused every span batch to be rejected with HTTP 400 and silently dropped, resulting in an empty `spans` table despite spans being created and buffered correctly
+
 ## [1.5.1] - 2026-05-15
 
 ### Added
@@ -296,6 +302,7 @@
 
 - FastAPI (via LedgerMiddleware)
 
+[1.5.2]: https://github.com/JakubTuta/ledger-sdk/compare/v1.5.1...v1.5.2
 [1.5.1]: https://github.com/JakubTuta/ledger-sdk/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/JakubTuta/ledger-sdk/compare/v1.4.2...v1.5.0
 [1.4.2]: https://github.com/JakubTuta/ledger-sdk/compare/v1.4.1...v1.4.2

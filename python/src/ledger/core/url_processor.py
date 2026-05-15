@@ -97,9 +97,8 @@ class URLProcessor:
     def should_ignore_path(self, path: str) -> bool:
         normalized = self._normalize_slashes(path)
 
-        if self.allowed_path_prefixes:
-            if not any(normalized.startswith(prefix) for prefix in self.allowed_path_prefixes):
-                return True
+        if self.allowed_path_prefixes and not any(normalized.startswith(prefix) for prefix in self.allowed_path_prefixes):
+            return True
 
         if not self.filter_ignored_paths:
             return False
