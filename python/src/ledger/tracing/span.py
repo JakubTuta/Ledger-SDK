@@ -2,7 +2,7 @@ import dataclasses
 import enum
 import time
 import traceback
-from typing import Any
+from typing import Any, ClassVar
 
 
 class SpanKind(enum.Enum):
@@ -67,14 +67,14 @@ class Span:
         if self.end_ns is None:
             self.end_ns = time.time_ns()
 
-    _KIND_TO_INT: dict[str, int] = {
+    _KIND_TO_INT: ClassVar[dict[str, int]] = {
         "internal": 0,
         "server": 1,
         "client": 2,
         "producer": 3,
         "consumer": 4,
     }
-    _STATUS_TO_INT: dict[str, int] = {
+    _STATUS_TO_INT: ClassVar[dict[str, int]] = {
         "unset": 0,
         "ok": 1,
         "error": 2,

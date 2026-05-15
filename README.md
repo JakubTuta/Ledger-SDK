@@ -29,7 +29,7 @@ We built Ledger because we were tired of spending hours setting up logging infra
 
 ## Available Now
 
-**Python SDK** (v1.5.1) - [Install from PyPI](https://pypi.org/project/ledger-sdk/)
+**Python SDK** (v1.5.2) - [Install from PyPI](https://pypi.org/project/ledger-sdk/)
 
 Supports:
 
