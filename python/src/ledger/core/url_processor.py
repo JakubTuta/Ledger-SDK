@@ -32,6 +32,7 @@ DEFAULT_IGNORED_EXTENSIONS = {
     ".aspx",
     ".jsp",
     ".cgi",
+    ".xml",
 }
 
 
@@ -45,10 +46,12 @@ class URLProcessor:
         custom_ignored_extensions: list[str] | None = None,
         normalization_patterns: list[tuple[Pattern, str]] | None = None,
         template_style: str = "curly",
+        allowed_path_prefixes: list[str] | None = None,
     ):
         self.normalize_paths = normalize_paths
         self.filter_ignored_paths = filter_ignored_paths
         self.template_style = template_style
+        self.allowed_path_prefixes = allowed_path_prefixes or []
 
         self.ignored_paths = set(DEFAULT_IGNORED_PATHS)
         if custom_ignored_paths:
@@ -88,18 +91,27 @@ class URLProcessor:
 
         return patterns
 
+    def _normalize_slashes(self, path: str) -> str:
+        return re.sub(r"^/+", "/", path)
+
     def should_ignore_path(self, path: str) -> bool:
+        normalized = self._normalize_slashes(path)
+
+        if self.allowed_path_prefixes:
+            if not any(normalized.startswith(prefix) for prefix in self.allowed_path_prefixes):
+                return True
+
         if not self.filter_ignored_paths:
             return False
 
-        if path in self.ignored_paths:
+        if normalized in self.ignored_paths:
             return True
 
         for prefix in self.ignored_prefixes:
-            if path.startswith(prefix):
+            if normalized.startswith(prefix):
                 return True
 
-        return any(path.endswith(extension) for extension in self.ignored_extensions)
+        return any(normalized.endswith(extension) for extension in self.ignored_extensions)
 
     def normalize_path(self, path: str) -> str:
         if not self.normalize_paths:

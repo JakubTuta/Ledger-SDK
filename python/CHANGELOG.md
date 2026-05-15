@@ -1,3 +1,14 @@
+## [1.5.1] - 2026-05-15
+
+### Added
+
+- `allowed_path_prefixes` parameter on all framework middlewares (FastAPI, Flask, Django) and `URLProcessor` — whitelist approach that drops any request path not starting with one of the specified prefixes; ideal for APIs that only want to capture `/api/` traffic and ignore all scanner noise
+- `.xml` added to `DEFAULT_IGNORED_EXTENSIONS` — catches WordPress manifest probes (`wlwmanifest.xml`) and similar XML scanner requests automatically
+
+### Fixed
+
+- Paths with repeated leading slashes (e.g. `//sito/wp-includes/wlwmanifest.xml`) bypassed prefix-based ignore rules; `should_ignore_path` now normalizes multiple leading slashes before matching
+
 ## [1.5.0] - 2026-05-14
 
 ### Added
@@ -285,6 +296,7 @@
 
 - FastAPI (via LedgerMiddleware)
 
+[1.5.1]: https://github.com/JakubTuta/ledger-sdk/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/JakubTuta/ledger-sdk/compare/v1.4.2...v1.5.0
 [1.4.2]: https://github.com/JakubTuta/ledger-sdk/compare/v1.4.1...v1.4.2
 [1.4.1]: https://github.com/JakubTuta/ledger-sdk/compare/v1.4.0...v1.4.1

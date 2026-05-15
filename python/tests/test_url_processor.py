@@ -149,3 +149,26 @@ class TestURLProcessor:
     def test_normalize_path_method(self, default_processor):
         assert default_processor.normalize_path("/users/123") == "/users/{id}"
         assert default_processor.normalize_path("/api/users") == "/api/users"
+
+    def test_double_slash_paths_filtered(self, default_processor):
+        assert default_processor.process_url("//sito/wp-includes/wlwmanifest.xml") is None
+        assert default_processor.process_url("//wp-admin/login") is None
+        assert default_processor.process_url("//wp-includes/wlwmanifest.xml") is None
+
+    def test_allowed_path_prefixes_whitelist(self):
+        processor = URLProcessor(allowed_path_prefixes=["/api/"])
+        assert processor.process_url("/api/v1/users") == "/api/v1/users"
+        assert processor.process_url("/api/v1/recommendations/home") == "/api/v1/recommendations/home"
+        assert processor.process_url("/health") is None
+        assert processor.process_url("//sito/wp-includes/wlwmanifest.xml") is None
+        assert processor.process_url("/admin/panel") is None
+
+    def test_allowed_path_prefixes_multiple(self):
+        processor = URLProcessor(allowed_path_prefixes=["/api/", "/health"])
+        assert processor.process_url("/api/users") == "/api/users"
+        assert processor.process_url("/health") == "/health"
+        assert processor.process_url("/metrics") is None
+
+    def test_allowed_path_prefixes_empty_allows_all(self, default_processor):
+        assert default_processor.process_url("/api/users") == "/api/users"
+        assert default_processor.process_url("/health") == "/health"

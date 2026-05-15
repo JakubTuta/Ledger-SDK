@@ -27,6 +27,7 @@ class BaseMiddleware:
         custom_ignored_extensions: list[str] | None = None,
         normalization_patterns: list[tuple[Pattern, str]] | None = None,
         template_style: str = "curly",
+        allowed_path_prefixes: list[str] | None = None,
     ):
         self.ledger = ledger_client
         self.exclude_paths: set[str] = set(exclude_paths or [])
@@ -40,6 +41,7 @@ class BaseMiddleware:
             custom_ignored_extensions=custom_ignored_extensions,
             normalization_patterns=normalization_patterns,
             template_style=template_style,
+            allowed_path_prefixes=allowed_path_prefixes,
         )
 
     def should_exclude_path(self, path: str) -> bool:

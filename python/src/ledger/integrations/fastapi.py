@@ -27,6 +27,7 @@ class LedgerMiddleware(BaseHTTPMiddleware, base_middleware_module.BaseMiddleware
         custom_ignored_extensions: list[str] | None = None,
         normalization_patterns: list[tuple[Pattern, str]] | None = None,
         template_style: str = "curly",
+        allowed_path_prefixes: list[str] | None = None,
     ):
         BaseHTTPMiddleware.__init__(self, app)
         base_middleware_module.BaseMiddleware.__init__(
@@ -41,6 +42,7 @@ class LedgerMiddleware(BaseHTTPMiddleware, base_middleware_module.BaseMiddleware
             custom_ignored_extensions=custom_ignored_extensions,
             normalization_patterns=normalization_patterns,
             template_style=template_style,
+            allowed_path_prefixes=allowed_path_prefixes,
         )
 
     def _resolve_path(self, request: Request) -> str | None:
