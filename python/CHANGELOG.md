@@ -1,3 +1,28 @@
+## [1.6.0] - 2026-05-17
+
+### Removed
+
+- **Custom metrics API removed entirely** (breaking) — the counter / gauge / histogram pre-aggregation feature was retired across the platform
+  - Deleted `ledger.metrics` module: `counter()`, `gauge()`, `histogram()` module-level helpers and `MetricsAPI`
+  - `LedgerClient.metrics` attribute removed; `client.metrics.counter()` / `.gauge()` / `.histogram()` no longer exist
+  - `Aggregator` and in-process pre-aggregation removed
+  - `LedgerClient` constructor parameters removed: `metrics_enabled`, `metrics_aggregation_window_s`, `metrics_max_tags_per_metric`
+  - Environment variables removed: `LEDGER_METRICS_ENABLED`, `LEDGER_METRICS_AGGREGATION_WINDOW_S`, `LEDGER_METRICS_MAX_TAGS_PER_METRIC`
+  - `POST /api/v1/ingest/metrics/batch` is no longer called and no longer exists server-side
+  - `MetricsAPI` no longer exported from `ledger/__init__.py`
+
+### Changed
+
+- `LogBuffer` no longer maintains a metrics queue (`add_metrics`, `get_metrics_batch`, `requeue_metrics`, `metrics_empty` removed); span and log queues unchanged
+- `BackgroundFlusher` no longer drains a metrics queue; span and log flush cycles unchanged
+- `LedgerClient.shutdown()` / `shutdown_sync()` no longer stop a metrics aggregation timer (timer removed)
+
+### Migration
+
+- Remove all `ledger.metrics.*` and `client.metrics.*` calls — there is no replacement; use logs or tracing instead
+- Drop the removed `metrics_*` constructor args and `LEDGER_METRICS_*` env vars; passing them will raise `TypeError`
+- Tracing, logging, and all framework/HTTP/DB integrations are unaffected
+
 ## [1.5.2] - 2026-05-15
 
 ### Fixed
@@ -302,6 +327,7 @@
 
 - FastAPI (via LedgerMiddleware)
 
+[1.6.0]: https://github.com/JakubTuta/ledger-sdk/compare/v1.5.2...v1.6.0
 [1.5.2]: https://github.com/JakubTuta/ledger-sdk/compare/v1.5.1...v1.5.2
 [1.5.1]: https://github.com/JakubTuta/ledger-sdk/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/JakubTuta/ledger-sdk/compare/v1.4.2...v1.5.0

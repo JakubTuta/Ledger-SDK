@@ -13,7 +13,6 @@ class LogBuffer:
         self.max_size = max_size
         self._queue: deque[dict[str, Any]] = deque()
         self._span_queue: deque[dict[str, Any]] = deque()
-        self._metrics_queue: deque[dict[str, Any]] = deque()
         self._lock = threading.Lock()
         self._dropped_count = 0
         self._last_warn_time = 0.0
@@ -63,27 +62,6 @@ class LogBuffer:
     def spans_empty(self) -> bool:
         with self._lock:
             return len(self._span_queue) == 0
-
-    def add_metrics(self, payloads: list[dict[str, Any]]) -> None:
-        with self._lock:
-            for payload in payloads:
-                if len(self._metrics_queue) < self.max_size:
-                    self._metrics_queue.append(payload)
-
-    def get_metrics_batch(self, max_batch_size: int) -> list[dict[str, Any]]:
-        with self._lock:
-            n = min(len(self._metrics_queue), max_batch_size)
-            return [self._metrics_queue.popleft() for _ in range(n)]
-
-    def requeue_metrics(self, batch: list[dict[str, Any]]) -> None:
-        with self._lock:
-            space = self.max_size - len(self._metrics_queue)
-            fit = batch[:space] if space < len(batch) else batch
-            self._metrics_queue.extendleft(reversed(fit))
-
-    def metrics_empty(self) -> bool:
-        with self._lock:
-            return len(self._metrics_queue) == 0
 
     def size(self) -> int:
         with self._lock:

@@ -98,10 +98,6 @@ class BackgroundFlusher:
                     if not await self._flush_spans_once():
                         break
 
-                while not self.buffer.metrics_empty() and not self._shutdown_event.is_set():
-                    if not await self._flush_metrics_once():
-                        break
-
             except asyncio.CancelledError:
                 break
             except Exception as e:
@@ -241,31 +237,6 @@ class BackgroundFlusher:
             self.buffer.requeue_spans(batch)
             return False
 
-    async def _flush_metrics_once(self) -> bool:
-        batch = self.buffer.get_metrics_batch(self.max_batch_size)
-        if not batch:
-            return False
-
-        try:
-            await self.rate_limiter.wait_if_needed()
-            response = await self.http_client.post(
-                "/api/v1/ingest/metrics/batch",
-                json_data={"metrics": batch},
-            )
-            if response.status_code == 202:
-                return True
-            if response.status_code == 400:
-                logging_module.get_logger().error(
-                    "Metrics batch rejected (400): %s", response.text[:500]
-                )
-                return True
-            self.buffer.requeue_metrics(batch)
-            return False
-        except Exception as e:
-            logging_module.get_logger().error("Error flushing metrics: %s", e)
-            self.buffer.requeue_metrics(batch)
-            return False
-
     def _handle_network_error(self, error_type: str, error: Exception, attempt: int) -> None:
         logging_module.get_logger().error(
             "%s (attempt %d/%d): %s", error_type, attempt + 1, self.max_retries, error
@@ -358,22 +329,6 @@ class BackgroundFlusher:
                 break
             except Exception as e:
                 logging_module.get_logger().error("Shutdown spans flush error: %s", e)
-                break
-
-        while not self.buffer.metrics_empty():
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                break
-            batch = self.buffer.get_metrics_batch(self.max_batch_size)
-            if not batch:
-                break
-            try:
-                await asyncio.wait_for(self._flush_metrics_once(), timeout=remaining)
-            except asyncio.TimeoutError:
-                self.buffer.requeue_metrics(batch)
-                break
-            except Exception as e:
-                logging_module.get_logger().error("Shutdown metrics flush error: %s", e)
                 break
 
         logging_module.get_logger().info("Shutdown complete")

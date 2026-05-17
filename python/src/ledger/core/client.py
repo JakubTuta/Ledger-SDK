@@ -11,9 +11,6 @@ import ledger.core.http_client as http_client_module
 import ledger.core.rate_limiter as rate_limiter_module
 import ledger.core.threaded_flusher as threaded_flusher_module
 import ledger.core.validator as validator_module
-import ledger.metrics as metrics_init_module
-import ledger.metrics.aggregator as aggregator_module
-import ledger.metrics.api as metrics_api_module
 import ledger.tracing as tracing_init_module
 import ledger.tracing.buffer as trace_buffer_module
 import ledger.tracing.sampler as sampler_module
@@ -36,7 +33,6 @@ class LedgerClient:
     """
 
     tracer: "tracer_module.Tracer | None" = None
-    metrics: "metrics_api_module.MetricsAPI | None" = None
 
     def __init__(
         self,
@@ -55,9 +51,6 @@ class LedgerClient:
         tracing_enabled: bool | None = None,
         trace_sample_rate: float | None = None,
         trace_decision_window_ms: float | None = None,
-        metrics_enabled: bool | None = None,
-        metrics_aggregation_window_s: float | None = None,
-        metrics_max_tags_per_metric: int | None = None,
     ):
         """Initialize the Ledger client.
 
@@ -107,19 +100,6 @@ class LedgerClient:
             trace_decision_window_ms
             if trace_decision_window_ms is not None
             else config.trace_decision_window_ms
-        )
-        resolved_metrics_enabled = (
-            metrics_enabled if metrics_enabled is not None else config.metrics_enabled
-        )
-        resolved_metrics_aggregation_window_s = (
-            metrics_aggregation_window_s
-            if metrics_aggregation_window_s is not None
-            else config.metrics_aggregation_window_s
-        )
-        resolved_metrics_max_tags_per_metric = (
-            metrics_max_tags_per_metric
-            if metrics_max_tags_per_metric is not None
-            else config.metrics_max_tags_per_metric
         )
 
         self._validate_config(
@@ -194,7 +174,6 @@ class LedgerClient:
             self._mode = "threaded"
 
         self._sdk_start_time = datetime.now(timezone.utc)
-        self._metrics_aggregator: aggregator_module.Aggregator | None = None
 
         if resolved_tracing_enabled:
             decision_buffer = trace_buffer_module.TraceDecisionBuffer(
@@ -211,25 +190,8 @@ class LedgerClient:
         else:
             self.tracer = None
 
-        if resolved_metrics_enabled:
-            self._metrics_aggregator = aggregator_module.Aggregator(
-                window_s=resolved_metrics_aggregation_window_s,
-                on_flush=self._on_metrics_flush,
-                max_tags_per_metric=resolved_metrics_max_tags_per_metric,
-            )
-            self.metrics: metrics_api_module.MetricsAPI | None = metrics_api_module.MetricsAPI(
-                aggregator=self._metrics_aggregator
-            )
-            metrics_init_module._set_default_metrics(self.metrics)
-        else:
-            self.metrics = None
-
     def _on_span_end(self, span: span_module.Span) -> None:
         self._buffer.add_span(span.to_dict())
-        self._flusher.notify()
-
-    def _on_metrics_flush(self, payloads: list[dict[str, Any]]) -> None:
-        self._buffer.add_metrics(payloads)
         self._flusher.notify()
 
     def _validate_config(
@@ -584,10 +546,6 @@ class LedgerClient:
             "consecutive_failures": flusher_metrics["consecutive_failures"],
         }
 
-    def _stop_background_services(self) -> None:
-        if self._metrics_aggregator is not None:
-            self._metrics_aggregator.stop()
-
     async def shutdown(self, timeout: float = 10.0) -> None:
         """Gracefully shut down the client and flush remaining logs.
 
@@ -603,7 +561,6 @@ class LedgerClient:
             >>> # Or with custom timeout:
             >>> await client.shutdown(timeout=30.0)
         """
-        self._stop_background_services()
         if self._mode == "async":
             await self._flusher.shutdown(timeout=timeout)  # type: ignore[union-attr]
             if self._http_client is not None:
@@ -624,7 +581,6 @@ class LedgerClient:
             >>> import atexit
             >>> atexit.register(client.shutdown_sync)
         """
-        self._stop_background_services()
         if self._mode == "threaded":
             self._flusher.shutdown(timeout=timeout)  # type: ignore[union-attr]
         else:

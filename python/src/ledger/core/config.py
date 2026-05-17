@@ -56,16 +56,6 @@ class LedgerConfig(BaseSettings):
         default=2000.0, gt=0, description="Error-bias hold window in milliseconds"
     )
 
-    metrics_enabled: bool = Field(default=True, description="Enable custom metrics collection")
-
-    metrics_aggregation_window_s: float = Field(
-        default=10.0, gt=0, description="Pre-aggregation flush interval in seconds"
-    )
-
-    metrics_max_tags_per_metric: int = Field(
-        default=20, gt=0, description="Maximum distinct tag combinations per metric name per flush"
-    )
-
     service_name: str = Field(default="python", description="Service name attached to all spans")
 
     class Config:
