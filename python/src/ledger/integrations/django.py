@@ -28,6 +28,7 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
         normalization_patterns: list[tuple[Pattern, str]] | None = None,
         template_style: str = "curly",
         allowed_path_prefixes: list[str] | None = None,
+        only_registered_routes: bool = True,
     ):
         if ledger_client is None:
             from django.conf import settings
@@ -53,6 +54,7 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
             normalization_patterns=normalization_patterns,
             template_style=template_style,
             allowed_path_prefixes=allowed_path_prefixes,
+            only_registered_routes=only_registered_routes,
         )
         self.get_response = get_response
 
@@ -295,6 +297,9 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
             route = request.resolver_match.route
             if route:
                 return self._normalize_django_path(route)
+
+        if self.only_registered_routes:
+            return None
 
         return self.process_request_path(request.path)
 

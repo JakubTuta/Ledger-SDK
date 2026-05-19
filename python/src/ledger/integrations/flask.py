@@ -28,6 +28,7 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
         normalization_patterns: list[tuple[Pattern, str]] | None = None,
         template_style: str = "curly",
         allowed_path_prefixes: list[str] | None = None,
+        only_registered_routes: bool = True,
     ):
         if ledger_client is None:
             ledger_client = app.config.get("LEDGER_CLIENT")
@@ -51,6 +52,7 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
             normalization_patterns=normalization_patterns,
             template_style=template_style,
             allowed_path_prefixes=allowed_path_prefixes,
+            only_registered_routes=only_registered_routes,
         )
 
         self.normalize_paths = normalize_paths
@@ -171,8 +173,13 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
         self.log_exception(request_info, exception, duration_ms)
 
     def _get_path(self) -> str | None:
-        if self.normalize_paths and request.url_rule:
-            return self._normalize_flask_path(request.url_rule.rule)
+        if request.url_rule:
+            if self.normalize_paths:
+                return self._normalize_flask_path(request.url_rule.rule)
+            return self.process_request_path(request.path)
+
+        if self.only_registered_routes:
+            return None
 
         return self.process_request_path(request.path)
 

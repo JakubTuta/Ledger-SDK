@@ -130,16 +130,36 @@ class TestFlaskIntegration:
         call_kwargs = mock_client.log_endpoint.call_args.kwargs
         assert call_kwargs["path"] == "/sessions/{session_id}"
 
-    def test_fallback_to_normalization_for_404(self, app_with_middleware):
+    def test_unregistered_route_not_logged_by_default(self, app_with_middleware):
         app, mock_client = app_with_middleware
         client = app.test_client()
 
         response = client.get("/nonexistent/123")
 
         assert response.status_code == 404
-        assert mock_client.log_endpoint.called
+        assert not mock_client.log_endpoint.called
 
-        call_kwargs = mock_client.log_endpoint.call_args.kwargs
+    def test_fallback_to_normalization_for_404_when_opted_out(self, mock_ledger_client):
+        app = Flask(__name__)
+        app.config["TESTING"] = True
+
+        @app.route("/users/<int:user_id>")
+        def get_user(user_id):
+            return {"user_id": user_id}
+
+        LedgerMiddleware(
+            app,
+            ledger_client=mock_ledger_client,
+            only_registered_routes=False,
+        )
+        client = app.test_client()
+
+        response = client.get("/nonexistent/123")
+
+        assert response.status_code == 404
+        assert mock_ledger_client.log_endpoint.called
+
+        call_kwargs = mock_ledger_client.log_endpoint.call_args.kwargs
         assert call_kwargs["path"] == "/nonexistent/{id}"
         assert call_kwargs["status_code"] == 404
 
@@ -220,7 +240,12 @@ class TestFlaskIntegration:
         def test_route():
             return {"ok": True}
 
-        LedgerMiddleware(app, ledger_client=mock_ledger_client, filter_ignored_paths=False)
+        LedgerMiddleware(
+            app,
+            ledger_client=mock_ledger_client,
+            filter_ignored_paths=False,
+            only_registered_routes=False,
+        )
 
         client = app.test_client()
 

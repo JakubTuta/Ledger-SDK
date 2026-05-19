@@ -71,16 +71,35 @@ class TestFastAPIIntegration:
         call_kwargs = mock_client.log_endpoint.call_args.kwargs
         assert call_kwargs["path"] == "/v2/match/active/{match_id}"
 
-    def test_fallback_to_normalization_for_404(self, app_with_middleware):
+    def test_unregistered_route_not_logged_by_default(self, app_with_middleware):
         app, mock_client = app_with_middleware
         client = TestClient(app)
 
         response = client.get("/nonexistent/123")
 
         assert response.status_code == 404
-        assert mock_client.log_endpoint.called
+        assert not mock_client.log_endpoint.called
 
-        call_kwargs = mock_client.log_endpoint.call_args.kwargs
+    def test_fallback_to_normalization_for_404_when_opted_out(self, mock_ledger_client):
+        app = FastAPI()
+
+        @app.get("/users/{user_id}")
+        async def get_user(user_id: int):
+            return {"user_id": user_id}
+
+        app.add_middleware(
+            LedgerMiddleware,
+            ledger_client=mock_ledger_client,
+            only_registered_routes=False,
+        )
+        client = TestClient(app)
+
+        response = client.get("/nonexistent/123")
+
+        assert response.status_code == 404
+        assert mock_ledger_client.log_endpoint.called
+
+        call_kwargs = mock_ledger_client.log_endpoint.call_args.kwargs
         assert call_kwargs["path"] == "/nonexistent/{id}"
 
     def test_captures_path_params(self, app_with_middleware):

@@ -28,10 +28,12 @@ class BaseMiddleware:
         normalization_patterns: list[tuple[Pattern, str]] | None = None,
         template_style: str = "curly",
         allowed_path_prefixes: list[str] | None = None,
+        only_registered_routes: bool = True,
     ):
         self.ledger = ledger_client
         self.exclude_paths: set[str] = set(exclude_paths or [])
         self.capture_query_params = capture_query_params
+        self.only_registered_routes = only_registered_routes
 
         self.url_processor = url_processor_module.URLProcessor(
             normalize_paths=normalize_paths,

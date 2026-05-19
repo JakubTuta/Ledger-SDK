@@ -102,7 +102,22 @@ class TestDjangoIntegration:
         call_kwargs = mock_ledger_client.log_endpoint.call_args.kwargs
         assert call_kwargs["path"] == "sessions/{session_id}"
 
-    def test_fallback_to_normalization_for_no_route(self, middleware, mock_ledger_client):
+    def test_unregistered_route_not_logged_by_default(self, middleware, mock_ledger_client):
+        request = MockRequest("/nonexistent/123")
+        response = middleware(request)
+
+        assert response.status_code == 200
+        assert not mock_ledger_client.log_endpoint.called
+
+    def test_fallback_to_normalization_for_no_route_when_opted_out(
+        self, mock_ledger_client, get_response
+    ):
+        middleware = LedgerMiddleware(
+            get_response=get_response,
+            ledger_client=mock_ledger_client,
+            only_registered_routes=False,
+        )
+
         request = MockRequest("/nonexistent/123")
         response = middleware(request)
 
@@ -167,6 +182,7 @@ class TestDjangoIntegration:
             get_response=get_response,
             ledger_client=mock_ledger_client,
             normalize_paths=False,
+            only_registered_routes=False,
         )
 
         request = MockRequest("/users/123")
@@ -183,6 +199,7 @@ class TestDjangoIntegration:
             get_response=get_response,
             ledger_client=mock_ledger_client,
             filter_ignored_paths=False,
+            only_registered_routes=False,
         )
 
         request = MockRequest("/robots.txt")

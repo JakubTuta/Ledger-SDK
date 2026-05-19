@@ -1,3 +1,20 @@
+## [1.6.1] - 2026-05-19
+
+### Added
+
+- `only_registered_routes` parameter on all framework middlewares (FastAPI, Flask, Django) and `BaseMiddleware`, **default `True`** — only requests that match a route the application actually registered are logged; unmatched paths are dropped. Whitelist is derived automatically from the framework's own route table (FastAPI `request.scope["route"]`, Flask `request.url_rule`, Django `request.resolver_match`); no manual route list required. Eliminates the need to maintain a scanner-path blacklist for noise like `/actuator/env`, `/_next/static/env.js`, `/.vercel/.env.production.local`
+
+### Changed
+
+- **Unmatched / 404 paths are no longer logged by default** (behavior change) — scanner and bot traffic that never hits a registered endpoint is dropped before reaching the buffer. Set `only_registered_routes=False` to restore the previous behavior (regex-normalized fallback path through the `DEFAULT_IGNORED_*` blacklist)
+- `_resolve_path()` (FastAPI) / `_get_path()` (Flask, Django) return `None` for unmatched routes when `only_registered_routes=True`; existing `None` short-circuit in the dispatch path suppresses the log with no other changes
+
+### Backwards Compatible
+
+- Registered endpoints, dynamic/programmatic routes (`add_url_rule`, `app.add_route`, `path()`), tracing, logging, and all HTTP/DB integrations unaffected
+- `only_registered_routes=False` reproduces 1.6.0 behavior exactly
+- `allowed_path_prefixes` and the `DEFAULT_IGNORED_*` blacklist still honored when the opt-out is used
+
 ## [1.6.0] - 2026-05-17
 
 ### Removed
@@ -327,6 +344,7 @@
 
 - FastAPI (via LedgerMiddleware)
 
+[1.6.1]: https://github.com/JakubTuta/ledger-sdk/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/JakubTuta/ledger-sdk/compare/v1.5.2...v1.6.0
 [1.5.2]: https://github.com/JakubTuta/ledger-sdk/compare/v1.5.1...v1.5.2
 [1.5.1]: https://github.com/JakubTuta/ledger-sdk/compare/v1.5.0...v1.5.1
