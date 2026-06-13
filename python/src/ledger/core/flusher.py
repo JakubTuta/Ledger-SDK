@@ -15,6 +15,7 @@ class SendResult(enum.Enum):
     OK = "ok"
     DROPPED = "dropped"
     RETRY_EXHAUSTED = "retry_exhausted"
+    BACKPRESSURE = "backpressure"
 
 
 class BackgroundFlusher:
@@ -124,6 +125,10 @@ class BackgroundFlusher:
             self._metrics["total_logs_rejected"] += len(batch)
             return True
 
+        if result is SendResult.BACKPRESSURE:
+            self.buffer.requeue(batch)
+            return False
+
         self.buffer.requeue(batch)
         self._metrics["failed_flushes"] += 1
         self._metrics["total_logs_failed"] += len(batch)
@@ -138,7 +143,7 @@ class BackgroundFlusher:
                 await self.rate_limiter.wait_if_needed()
                 result = await self._send_batch(batch)
 
-                if result in (SendResult.OK, SendResult.DROPPED):
+                if result in (SendResult.OK, SendResult.DROPPED, SendResult.BACKPRESSURE):
                     return result
 
                 if attempt < self.max_retries - 1:
@@ -186,11 +191,11 @@ class BackgroundFlusher:
                 retry_after = int(response.headers.get("Retry-After", 60))
                 kind = "rate_limit" if status == 429 else "queue_full"
                 logging_module.get_logger().warning(
-                    "%s (%d), sleeping %ds", kind, status, retry_after
+                    "%s (%d), backing off %ds", kind, status, retry_after
                 )
                 self._increment_error_count(kind)
                 await asyncio.sleep(retry_after)
-                return SendResult.RETRY_EXHAUSTED
+                return SendResult.BACKPRESSURE
 
             if status == 401:
                 logging_module.get_logger().error("Invalid API key (401), stopping ingestion")

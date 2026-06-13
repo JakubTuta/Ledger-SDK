@@ -1,3 +1,5 @@
+import gzip
+import json
 from typing import Any
 
 import httpx
@@ -12,9 +14,11 @@ class HTTPClient:
         api_key: str,
         timeout: float = 5.0,
         pool_size: int = 10,
+        compress: bool = True,
     ):
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
+        self._compress = compress
 
         self._client = httpx.AsyncClient(
             base_url=self.base_url,
@@ -37,10 +41,20 @@ class HTTPClient:
         json_data: dict[str, Any],
         headers: dict[str, str] | None = None,
     ) -> httpx.Response:
+        body = json.dumps(json_data).encode()
+        extra_headers: dict[str, str] = {}
+
+        if self._compress:
+            body = gzip.compress(body, compresslevel=6)
+            extra_headers["Content-Encoding"] = "gzip"
+
+        if headers:
+            extra_headers.update(headers)
+
         response = await self._client.post(
             path,
-            json=json_data,
-            headers=headers,
+            content=body,
+            headers=extra_headers if extra_headers else None,
         )
         return response
 

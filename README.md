@@ -13,7 +13,7 @@ app.add_middleware(LedgerMiddleware, ledger_client=ledger)
 
 That's it. Every request, response, and exception is now logged to your Ledger dashboard.
 
-[![Python SDK](https://img.shields.io/badge/python-v1.6.1-blue.svg)](https://pypi.org/project/ledger-sdk/)
+[![Python SDK](https://img.shields.io/badge/python-v1.7.0-blue.svg)](https://pypi.org/project/ledger-sdk/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Downloads](https://img.shields.io/badge/production-ready-brightgreen.svg)]()
 
@@ -25,19 +25,15 @@ Traditional observability tools are complicated, expensive, and slow down your a
 - **Works out of the box** - No configuration files, no setup guides, no dashboards to build.
 - **Production-ready from day one** - Built-in retry logic, rate limiting, and graceful failure handling.
 
-We built Ledger because we were tired of spending hours setting up logging infrastructure for every new project. Now it takes one line of code.
-
 ## Available Now
 
-**Python SDK** (v1.6.1) - [Install from PyPI](https://pypi.org/project/ledger-sdk/)
+**Python SDK** (v1.7.0) - [Install from PyPI](https://pypi.org/project/ledger-sdk/)
 
 Supports:
 
 - **FastAPI** - Async-first framework
 - **Django** - Full-stack web framework
 - **Flask** - Lightweight WSGI framework
-
-Coming soon: Express, and more.
 
 Want support for your framework? [Open an issue](https://github.com/JakubTuta/Ledger-SDK/issues) and let us know.
 
@@ -125,19 +121,11 @@ That's all you need. Start your app and watch the logs flow into your [Ledger da
 
 **Zero performance impact** - All logging happens in the background. Your API stays fast.
 
-## How It Works
-
-Ledger captures logs in your application (<0.1ms), buffers them in memory, and sends batches to the Ledger server in the background. Your application never waits for network I/O.
-
-If the server is down or slow, the SDK automatically retries with backoff. If it's really stuck, it drops old logs to prevent memory issues. You get observability without the risk.
-
-[Architecture details](sdk_overview/ARCHITECTURE.md) • [Performance benchmarks](sdk_overview/PERFORMANCE.md)
-
 ## Need Help?
 
 - [Read the docs](python/) - Full guides and examples
 - [Open an issue](https://github.com/JakubTuta/Ledger-SDK/issues) - Bug reports and feature requests
-- [View examples](python/fastapi/examples/) - See it in action
+- [View examples](python/examples/) - See it in action
 
 ## Links
 

@@ -1,3 +1,18 @@
+## [1.7.0] - 2026-06-13
+
+### Added
+
+- **Gzip compression on batch POST requests** — `LedgerClient` now compresses log and span payloads before sending, enabled by default (`compress=True`). Typical JSON telemetry payloads compress 60–80%, significantly reducing network bandwidth at scale. Pass `compress=False` to the `LedgerClient` constructor to disable.
+
+### Changed
+
+- `HTTPClient.post()` serializes JSON to bytes, optionally compresses with gzip (`compresslevel=6`), and sends with `Content-Encoding: gzip`. The server decompresses transparently — no changes required in your application code.
+
+### Backwards Compatible
+
+- All existing log, tracing, and framework integration APIs unchanged
+- `compress=False` reproduces pre-1.7.0 behavior exactly
+
 ## [1.6.1] - 2026-05-19
 
 ### Added
