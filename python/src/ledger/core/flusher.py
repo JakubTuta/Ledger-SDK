@@ -168,6 +168,8 @@ class BackgroundFlusher:
         return SendResult.RETRY_EXHAUSTED
 
     async def _send_batch(self, batch: list[dict[str, Any]]) -> SendResult:
+        if not batch:
+            return SendResult.DROPPED
         try:
             response = await self.http_client.post(
                 "/api/v1/ingest/batch",
@@ -221,7 +223,11 @@ class BackgroundFlusher:
         batch = self.buffer.get_span_batch(self.max_batch_size)
         if not batch:
             return False
+        return await self._send_spans_batch(batch)
 
+    async def _send_spans_batch(self, batch: list[dict[str, Any]]) -> bool:
+        if not batch:
+            return False
         try:
             await self.rate_limiter.wait_if_needed()
             response = await self.http_client.post(
@@ -328,12 +334,13 @@ class BackgroundFlusher:
             if not batch:
                 break
             try:
-                await asyncio.wait_for(self._flush_spans_once(), timeout=remaining)
+                await asyncio.wait_for(self._send_spans_batch(batch), timeout=remaining)
             except asyncio.TimeoutError:
                 self.buffer.requeue_spans(batch)
                 break
             except Exception as e:
                 logging_module.get_logger().error("Shutdown spans flush error: %s", e)
+                self.buffer.requeue_spans(batch)
                 break
 
         logging_module.get_logger().info("Shutdown complete")

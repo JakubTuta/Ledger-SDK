@@ -68,9 +68,9 @@ class Span:
             self.end_ns = time.time_ns()
 
     _KIND_TO_INT: ClassVar[dict[str, int]] = {
-        "internal": 0,
-        "server": 1,
-        "client": 2,
+        "server": 0,
+        "client": 1,
+        "internal": 2,
         "producer": 3,
         "consumer": 4,
     }

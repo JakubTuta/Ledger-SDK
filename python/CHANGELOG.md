@@ -1,3 +1,11 @@
+## [1.7.1] - 2026-06-13
+
+### Fixed
+
+- **Span kind values sent incorrectly** — `Span._KIND_TO_INT` mapped `internal→0, server→1, client→2` but the server proto enum is `SERVER=0, CLIENT=1, INTERNAL=2`; every span was stored in the database with the wrong kind. Fixed to match the proto definition.
+- **Span data loss during shutdown** — `BackgroundFlusher.shutdown()` popped a batch from the span buffer then called `_flush_spans_once()` which popped again from the now-empty buffer; the first batch was silently dropped. Extracted `_send_spans_batch(batch)` and called it directly in the shutdown loop with the already-popped batch, matching the existing log shutdown pattern.
+- **Empty batch guard** — Added explicit `if not batch` early-return in `_send_batch` and `_send_spans_batch` so neither method sends an empty request to the server even if called directly.
+
 ## [1.7.0] - 2026-06-13
 
 ### Added
@@ -359,6 +367,7 @@
 
 - FastAPI (via LedgerMiddleware)
 
+[1.7.1]: https://github.com/JakubTuta/ledger-sdk/compare/v1.7.0...v1.7.1
 [1.6.1]: https://github.com/JakubTuta/ledger-sdk/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/JakubTuta/ledger-sdk/compare/v1.5.2...v1.6.0
 [1.5.2]: https://github.com/JakubTuta/ledger-sdk/compare/v1.5.1...v1.5.2
