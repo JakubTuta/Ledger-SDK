@@ -1,47 +1,43 @@
-# Ledger
+<div align="center">
+
+# Ledger SDK
 
 **Observability for developers who just want to ship.**
 
-Add one line of code. Get automatic request logging, exception tracking, and performance monitoring. No configuration required.
+[![Python SDK](https://img.shields.io/badge/python-v1.7.0-blue.svg)](https://pypi.org/project/ledger-sdk/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+[Dashboard](https://ledger.jtuta.cloud) • [Backend](https://github.com/JakubTuta/Ledger-APP) • [Web UI](https://github.com/JakubTuta/Ledger-WEB) • [API Docs](https://bump.sh/tuta-corp/doc/ledger-api/)
+
+</div>
+
+---
+
+Add one line of code. Get automatic request logging, exception tracking, and performance monitoring.
 
 ```python
-from ledger import LedgerClient
-from ledger.integrations.fastapi import LedgerMiddleware
-
 app.add_middleware(LedgerMiddleware, ledger_client=ledger)
 ```
 
-That's it. Every request, response, and exception is now logged to your Ledger dashboard.
+Every request, response, and exception is now logged to your Ledger dashboard.
 
-[![Python SDK](https://img.shields.io/badge/python-v1.7.0-blue.svg)](https://pypi.org/project/ledger-sdk/)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Downloads](https://img.shields.io/badge/production-ready-brightgreen.svg)]()
+## Why Ledger
 
-## Why Ledger?
+- **Zero overhead** — Less than 0.1ms per request
+- **Works out of the box** — No configuration files, no dashboards to build
+- **Automatic error grouping** — Like Sentry, but free and self-hosted
+- **Distributed tracing** — W3C-compatible spans across services
+- **Production-ready** — Built-in retry logic, rate limiting, and graceful failure handling
 
-Traditional observability tools are complicated, expensive, and slow down your application. Ledger is different:
-
-- **Actually zero overhead** - Less than 0.1ms per request. Your users won't notice.
-- **Works out of the box** - No configuration files, no setup guides, no dashboards to build.
-- **Production-ready from day one** - Built-in retry logic, rate limiting, and graceful failure handling.
-
-## Available Now
-
-**Python SDK** (v1.7.0) - [Install from PyPI](https://pypi.org/project/ledger-sdk/)
-
-Supports:
-
-- **FastAPI** - Async-first framework
-- **Django** - Full-stack web framework
-- **Flask** - Lightweight WSGI framework
-
-Want support for your framework? [Open an issue](https://github.com/JakubTuta/Ledger-SDK/issues) and let us know.
-
-## Quick Start
+## Installation
 
 ```bash
 pip install ledger-sdk
 ```
+
+Supports **FastAPI**, **Django**, and **Flask**.
+
+## Quick Start
 
 ### FastAPI
 
@@ -62,7 +58,6 @@ async def lifespan(app: FastAPI):
     await ledger.shutdown()
 
 app = FastAPI(lifespan=lifespan)
-
 app.add_middleware(LedgerMiddleware, ledger_client=ledger)
 ```
 
@@ -80,7 +75,7 @@ LEDGER_CLIENT = LedgerClient(
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.middleware.common.CommonMiddleware",
-    "ledger.integrations.django.LedgerMiddleware",  # Add this
+    "ledger.integrations.django.LedgerMiddleware",
 ]
 ```
 
@@ -92,49 +87,22 @@ from ledger import LedgerClient
 from ledger.integrations.flask import LedgerMiddleware
 
 app = Flask(__name__)
-
 ledger = LedgerClient(
     api_key="ledger_proj_1_your_api_key",
     base_url="https://ledger-server.jtuta.cloud"
 )
-
 app.config["LEDGER_CLIENT"] = ledger
-
 LedgerMiddleware(app)
 ```
 
-That's all you need. Start your app and watch the logs flow into your [Ledger dashboard](https://ledger.jtuta.cloud).
-
-[Full documentation](python/) • [Get API key](https://ledger.jtuta.cloud) • [Examples](python/examples/)
-
-## What You Get
-
-**Automatic capture** - Every request, response, and exception. No manual logging code.
-
-**Distributed tracing** - W3C-compatible spans across services. Trace IDs automatically attached to logs emitted inside a span.
-
-**Full context** - Stack traces, request headers, response bodies, user attributes. Everything you need to debug.
-
-**Performance insights** - Response times, error rates, slow endpoints. Know where to optimize.
-
-**Production reliability** - Automatic retries, rate limiting, and graceful degradation. Works even when your network doesn't.
-
-**Zero performance impact** - All logging happens in the background. Your API stays fast.
-
-## Need Help?
-
-- [Read the docs](python/) - Full guides and examples
-- [Open an issue](https://github.com/JakubTuta/Ledger-SDK/issues) - Bug reports and feature requests
-- [View examples](python/examples/) - See it in action
+[Full Python SDK docs](python/) • [Get API key](https://ledger.jtuta.cloud) • [Examples](python/examples/)
 
 ## Links
 
-- [PyPI Package](https://pypi.org/project/ledger-sdk/) - Install the SDK
-- [Dashboard](https://ledger.jtuta.cloud) - View your logs
-- [API Server](https://ledger-server.jtuta.cloud) - Server endpoint
-- [Backend Source](https://github.com/JakubTuta/Ledger-APP) - API server code
-- [Frontend Source](https://github.com/JakubTuta/Ledger-WEB) - Dashboard code
+- [PyPI Package](https://pypi.org/project/ledger-sdk/)
+- [Dashboard](https://ledger.jtuta.cloud)
+- [API Reference](https://bump.sh/tuta-corp/doc/ledger-api/)
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
+MIT License — see [LICENSE](LICENSE) for details.
