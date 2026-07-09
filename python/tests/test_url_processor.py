@@ -158,7 +158,9 @@ class TestURLProcessor:
     def test_allowed_path_prefixes_whitelist(self):
         processor = URLProcessor(allowed_path_prefixes=["/api/"])
         assert processor.process_url("/api/v1/users") == "/api/v1/users"
-        assert processor.process_url("/api/v1/recommendations/home") == "/api/v1/recommendations/home"
+        assert (
+            processor.process_url("/api/v1/recommendations/home") == "/api/v1/recommendations/home"
+        )
         assert processor.process_url("/health") is None
         assert processor.process_url("//sito/wp-includes/wlwmanifest.xml") is None
         assert processor.process_url("/admin/panel") is None

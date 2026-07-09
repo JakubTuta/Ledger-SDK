@@ -4,10 +4,11 @@ from collections.abc import Callable
 from re import Pattern
 from typing import Any
 
+import opentelemetry.trace as trace_api
+
 import ledger.core.base_middleware as base_middleware_module
 import ledger.core.client as client_module
 import ledger.integrations.common as common_module
-import ledger.tracing.span as span_module
 
 
 class LedgerMiddleware(base_middleware_module.BaseMiddleware):
@@ -75,11 +76,6 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
             return self.get_response(request)
 
         start_time = time.time()
-        tracer = self.ledger.tracer
-
-        if tracer is None:
-            return self._sync_call_no_tracing(request, start_time)
-
         headers = common_module.django_meta_to_headers(request.META)
         url = (
             request.build_absolute_uri() if hasattr(request, "build_absolute_uri") else request.path
@@ -88,7 +84,6 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
         user_agent = request.META.get("HTTP_USER_AGENT")
 
         with common_module.http_server_span(
-            tracer=tracer,
             method=request.method,
             route=request.path,
             url=url,
@@ -102,12 +97,12 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
 
                 path = self._get_path(request)
                 if path is not None:
-                    span.name = f"{request.method} {path}"
-                    span.set_attr("http.route", path)
+                    span.update_name(f"{request.method} {path}")
+                    span.set_attribute("http.route", path)
 
-                span.set_attr("http.status_code", response.status_code)
+                span.set_attribute("http.response.status_code", response.status_code)
                 if response.status_code >= 500:
-                    span.set_status(span_module.SpanStatus.ERROR)
+                    span.set_status(trace_api.StatusCode.ERROR)
 
                 if path is not None:
                     request_info = {"method": request.method, "path": path}
@@ -127,12 +122,12 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
             except Exception as exc:
                 duration_ms = (time.time() - start_time) * 1000
                 span.record_exception(exc)
-                span.set_status(span_module.SpanStatus.ERROR)
+                span.set_status(trace_api.StatusCode.ERROR)
 
                 path = self._get_path(request)
                 if path is not None:
-                    span.name = f"{request.method} {path}"
-                    span.set_attr("http.route", path)
+                    span.update_name(f"{request.method} {path}")
+                    span.set_attribute("http.route", path)
                     request_info = {"method": request.method, "path": path}
                     if self.capture_query_params and request.META.get("QUERY_STRING"):
                         request_info["query_params"] = request.META["QUERY_STRING"]
@@ -142,55 +137,11 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
                     self.log_exception(request_info, exc, duration_ms)
                 raise
 
-    def _sync_call_no_tracing(self, request: Any, start_time: float) -> Any:
-        try:
-            response = self.get_response(request)
-            duration_ms = (time.time() - start_time) * 1000
-
-            path = self._get_path(request)
-            if path is None:
-                return response
-
-            request_info = {"method": request.method, "path": path}
-            if self.capture_query_params and request.META.get("QUERY_STRING"):
-                request_info["query_params"] = request.META["QUERY_STRING"]
-            path_params = self._get_path_params(request)
-            if path_params:
-                request_info["path_params"] = path_params
-
-            response_body: str | None = None
-            if response.status_code >= 400:
-                response_body = base_middleware_module._body_preview(response.content)
-
-            self.log_request(request_info, response.status_code, duration_ms, response_body)
-            return response
-        except Exception as exc:
-            duration_ms = (time.time() - start_time) * 1000
-
-            path = self._get_path(request)
-            if path is None:
-                raise
-
-            request_info = {"method": request.method, "path": path}
-            if self.capture_query_params and request.META.get("QUERY_STRING"):
-                request_info["query_params"] = request.META["QUERY_STRING"]
-            path_params = self._get_path_params(request)
-            if path_params:
-                request_info["path_params"] = path_params
-
-            self.log_exception(request_info, exc, duration_ms)
-            raise
-
     async def __acall__(self, request: Any) -> Any:
         if self.should_exclude_path(request.path):
             return await self.get_response(request)
 
         start_time = time.time()
-        tracer = self.ledger.tracer
-
-        if tracer is None:
-            return await self._async_call_no_tracing(request, start_time)
-
         headers = common_module.django_meta_to_headers(request.META)
         url = (
             request.build_absolute_uri() if hasattr(request, "build_absolute_uri") else request.path
@@ -199,7 +150,6 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
         user_agent = request.META.get("HTTP_USER_AGENT")
 
         with common_module.http_server_span(
-            tracer=tracer,
             method=request.method,
             route=request.path,
             url=url,
@@ -213,12 +163,12 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
 
                 path = self._get_path(request)
                 if path is not None:
-                    span.name = f"{request.method} {path}"
-                    span.set_attr("http.route", path)
+                    span.update_name(f"{request.method} {path}")
+                    span.set_attribute("http.route", path)
 
-                span.set_attr("http.status_code", response.status_code)
+                span.set_attribute("http.response.status_code", response.status_code)
                 if response.status_code >= 500:
-                    span.set_status(span_module.SpanStatus.ERROR)
+                    span.set_status(trace_api.StatusCode.ERROR)
 
                 if path is not None:
                     request_info = {"method": request.method, "path": path}
@@ -238,12 +188,12 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
             except Exception as exc:
                 duration_ms = (time.time() - start_time) * 1000
                 span.record_exception(exc)
-                span.set_status(span_module.SpanStatus.ERROR)
+                span.set_status(trace_api.StatusCode.ERROR)
 
                 path = self._get_path(request)
                 if path is not None:
-                    span.name = f"{request.method} {path}"
-                    span.set_attr("http.route", path)
+                    span.update_name(f"{request.method} {path}")
+                    span.set_attribute("http.route", path)
                     request_info = {"method": request.method, "path": path}
                     if self.capture_query_params and request.META.get("QUERY_STRING"):
                         request_info["query_params"] = request.META["QUERY_STRING"]
@@ -252,45 +202,6 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
                         request_info["path_params"] = path_params
                     self.log_exception(request_info, exc, duration_ms)
                 raise
-
-    async def _async_call_no_tracing(self, request: Any, start_time: float) -> Any:
-        try:
-            response = await self.get_response(request)
-            duration_ms = (time.time() - start_time) * 1000
-
-            path = self._get_path(request)
-            if path is None:
-                return response
-
-            request_info = {"method": request.method, "path": path}
-            if self.capture_query_params and request.META.get("QUERY_STRING"):
-                request_info["query_params"] = request.META["QUERY_STRING"]
-            path_params = self._get_path_params(request)
-            if path_params:
-                request_info["path_params"] = path_params
-
-            response_body: str | None = None
-            if response.status_code >= 400:
-                response_body = base_middleware_module._body_preview(response.content)
-
-            self.log_request(request_info, response.status_code, duration_ms, response_body)
-            return response
-        except Exception as exc:
-            duration_ms = (time.time() - start_time) * 1000
-
-            path = self._get_path(request)
-            if path is None:
-                raise
-
-            request_info = {"method": request.method, "path": path}
-            if self.capture_query_params and request.META.get("QUERY_STRING"):
-                request_info["query_params"] = request.META["QUERY_STRING"]
-            path_params = self._get_path_params(request)
-            if path_params:
-                request_info["path_params"] = path_params
-
-            self.log_exception(request_info, exc, duration_ms)
-            raise
 
     def _get_path(self, request: Any) -> str | None:
         if hasattr(request, "resolver_match") and request.resolver_match:

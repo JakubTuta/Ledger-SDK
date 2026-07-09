@@ -2,9 +2,9 @@
 
 # Ledger SDK
 
-**Observability for developers who just want to ship.**
+**OpenTelemetry-native observability for developers who just want to ship.**
 
-[![Python SDK](https://img.shields.io/badge/python-v1.7.0-blue.svg)](https://pypi.org/project/ledger-sdk/)
+[![Python SDK](https://img.shields.io/badge/python-v2.0.0-blue.svg)](https://pypi.org/project/ledger-sdk/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 [Dashboard](https://ledger.jtuta.cloud) • [Backend](https://github.com/JakubTuta/Ledger-APP) • [Web UI](https://github.com/JakubTuta/Ledger-WEB) • [API Docs](https://bump.sh/tuta-corp/doc/ledger-api/)
@@ -12,6 +12,12 @@
 </div>
 
 ---
+
+Ledger's server speaks standard **OTLP/HTTP**, so this repo ships the Python SDK — a thin
+distribution of the official `opentelemetry-python` SDK with Python-specific enhancements
+(exception capture, endpoint monitoring, log↔trace correlation). Any other language can send data
+to Ledger with its own stock OpenTelemetry SDK, no Ledger-specific package required — see
+[Any OpenTelemetry SDK](#any-opentelemetry-sdk) below.
 
 Add one line of code. Get automatic request logging, exception tracking, and performance monitoring.
 
@@ -23,11 +29,12 @@ Every request, response, and exception is now logged to your Ledger dashboard.
 
 ## Why Ledger
 
+- **OpenTelemetry-native** — real `opentelemetry-python` TracerProvider/LoggerProvider under the hood, OTLP/HTTP export
 - **Zero overhead** — Less than 0.1ms per request
 - **Works out of the box** — No configuration files, no dashboards to build
 - **Automatic error grouping** — Like Sentry, but free and self-hosted
 - **Distributed tracing** — W3C-compatible spans across services
-- **Production-ready** — Built-in retry logic, rate limiting, and graceful failure handling
+- **Any language welcome** — the server accepts standard OTLP from any OTel SDK, not just Python
 
 ## Installation
 
@@ -96,6 +103,20 @@ LedgerMiddleware(app)
 ```
 
 [Full Python SDK docs](python/) • [Get API key](https://ledger.jtuta.cloud) • [Examples](python/examples/)
+
+## Any OpenTelemetry SDK
+
+Not using Python? Point any language's stock OpenTelemetry SDK at Ledger — no Ledger package needed:
+
+```bash
+export OTEL_EXPORTER_OTLP_ENDPOINT="https://ledger-server.jtuta.cloud"
+export OTEL_EXPORTER_OTLP_PROTOCOL="http/protobuf"
+export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer ledger_proj_1_your_api_key"
+```
+
+Then use your language's normal OTel SDK setup (`@opentelemetry/sdk-trace-node`, Go's
+`go.opentelemetry.io/otel`, Java's `opentelemetry-sdk`, etc.) — traces and logs will appear in
+your Ledger dashboard. Metrics are not ingested; Ledger supports traces and logs only.
 
 ## Links
 

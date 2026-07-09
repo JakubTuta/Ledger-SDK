@@ -18,6 +18,7 @@ LEDGER_CLIENT = LedgerClient(
     api_key=os.getenv("LEDGER_API_KEY", "ledger_proj_1_your_api_key"),
     base_url=os.getenv("LEDGER_BASE_URL", "https://ledger-server.jtuta.cloud"),
 )
+LEDGER_CLIENT.instrument_logging()
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

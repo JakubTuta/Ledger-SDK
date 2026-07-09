@@ -3,9 +3,10 @@ from typing import Any
 
 import ledger._logging as logging_module
 
+_TRUNCATED_SUFFIX = "... [truncated]"
+
 
 class Validator:
-    VALID_LEVELS: frozenset[str] = frozenset({"debug", "info", "warning", "error", "critical"})
     VALID_LOG_TYPES: frozenset[str] = frozenset(
         {"console", "logger", "exception", "database", "endpoint", "custom"}
     )
@@ -24,75 +25,38 @@ class Validator:
         self.max_platform_version_length: int = constraints["max_platform_version_length"]
         self.max_error_type_length: int = constraints["max_error_type_length"]
 
-    def validate_log(self, log_entry: dict[str, Any]) -> dict[str, Any]:
-        validated = log_entry.copy()
+    def truncate_message(self, value: str) -> str:
+        return self._truncate_string(value, self.max_message_length, "message")
 
-        if "level" not in validated or validated["level"] not in self.VALID_LEVELS:
-            validated["level"] = "info"
+    def truncate_error_message(self, value: str) -> str:
+        return self._truncate_string(value, self.max_error_message_length, "error_message")
 
-        if "log_type" not in validated or validated["log_type"] not in self.VALID_LOG_TYPES:
-            validated["log_type"] = "console"
+    def truncate_stack_trace(self, value: str) -> str:
+        return self._truncate_string(value, self.max_stack_trace_length, "stack_trace")
 
-        if "importance" not in validated or validated["importance"] not in self.VALID_IMPORTANCE:
-            validated["importance"] = "standard"
+    def truncate_error_type(self, value: str) -> str:
+        return self._truncate_string(value, self.max_error_type_length, "error_type")
 
-        if validated.get("message"):
-            validated["message"] = self._truncate_string(
-                validated["message"], self.max_message_length, "message"
-            )
+    def truncate_environment(self, value: str) -> str:
+        return self._truncate_string(value, self.max_environment_length, "environment")
 
-        if validated.get("error_message"):
-            validated["error_message"] = self._truncate_string(
-                validated["error_message"], self.max_error_message_length, "error_message"
-            )
+    def truncate_release(self, value: str) -> str:
+        return self._truncate_string(value, self.max_release_length, "release")
 
-        if validated.get("stack_trace"):
-            validated["stack_trace"] = self._truncate_string(
-                validated["stack_trace"], self.max_stack_trace_length, "stack_trace"
-            )
+    def truncate_platform_version(self, value: str) -> str:
+        return self._truncate_string(value, self.max_platform_version_length, "platform_version")
 
-        if validated.get("error_type"):
-            validated["error_type"] = self._truncate_string(
-                validated["error_type"], self.max_error_type_length, "error_type"
-            )
-
-        if validated.get("environment"):
-            validated["environment"] = self._truncate_string(
-                validated["environment"], self.max_environment_length, "environment"
-            )
-
-        if validated.get("release"):
-            validated["release"] = self._truncate_string(
-                validated["release"], self.max_release_length, "release"
-            )
-
-        if validated.get("platform_version"):
-            validated["platform_version"] = self._truncate_string(
-                validated["platform_version"], self.max_platform_version_length, "platform_version"
-            )
-
-        if validated.get("attributes"):
-            validated["attributes"] = self._validate_attributes(validated["attributes"])
-
-        return validated
-
-    def _truncate_string(self, value: str, max_length: int, field_name: str) -> str:
-        if not isinstance(value, str):
-            value = str(value)
-
-        if len(value) <= max_length:
+    def normalize_log_type(self, value: Any) -> str:
+        if isinstance(value, str) and value in self.VALID_LOG_TYPES:
             return value
+        return "console"
 
-        truncated_suffix = "... [truncated]"
-        truncate_at = max_length - len(truncated_suffix)
+    def normalize_importance(self, value: Any) -> str:
+        if isinstance(value, str) and value in self.VALID_IMPORTANCE:
+            return value
+        return "standard"
 
-        logging_module.get_logger().warning(
-            "Field '%s' truncated from %d to %d characters", field_name, len(value), max_length
-        )
-
-        return value[:truncate_at] + truncated_suffix
-
-    def _validate_attributes(self, attributes: Any) -> dict[str, Any]:
+    def validate_attributes(self, attributes: Any) -> dict[str, Any]:
         if not isinstance(attributes, dict):
             logging_module.get_logger().warning(
                 "Attributes must be a dict, got %s, converting", type(attributes).__name__
@@ -123,6 +87,21 @@ class Validator:
         except (TypeError, ValueError) as e:
             logging_module.get_logger().warning("Attributes not JSON serializable: %s, removing", e)
             return {}
+
+    def _truncate_string(self, value: str, max_length: int, field_name: str) -> str:
+        if not isinstance(value, str):
+            value = str(value)
+
+        if len(value) <= max_length:
+            return value
+
+        truncate_at = max_length - len(_TRUNCATED_SUFFIX)
+
+        logging_module.get_logger().warning(
+            "Field '%s' truncated from %d to %d characters", field_name, len(value), max_length
+        )
+
+        return value[:truncate_at] + _TRUNCATED_SUFFIX
 
     def _truncate_attributes(self, attributes: dict[str, Any], max_bytes: int) -> dict[str, Any]:
         result = {}

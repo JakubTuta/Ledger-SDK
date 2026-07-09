@@ -1,3 +1,106 @@
+## [2.0.0] - 2026-07-07
+
+Ledger is now OpenTelemetry-native end to end. This release rebuilds the Python SDK as a thin
+distribution of the official `opentelemetry-python` SDK instead of the bespoke buffer/flusher/
+transport stack, so any language's stock OTel SDK can send traces and logs to Ledger over
+standard OTLP/HTTP — not just Python. All Ledger-specific enhancements (exception stack traces,
+log↔trace correlation, endpoint monitoring, attribute truncation, response-body capture) are
+preserved through a custom `LogRecordProcessor` and rewritten framework middlewares.
+
+### Added
+
+- **OTel-native core** — `LedgerClient` now wires up a real `opentelemetry.sdk.trace.TracerProvider`
+  and `opentelemetry.sdk._logs.LoggerProvider`, exporting via `OTLPSpanExporter`/`OTLPLogExporter`
+  (OTLP/HTTP, protobuf, gzip) to the Ledger server's new `/v1/traces` and `/v1/logs` endpoints.
+  Both providers are registered as the process-global OTel providers, so `opentelemetry.trace.get_tracer(...)`
+  and any third-party `opentelemetry-instrumentation-*` package route to Ledger automatically.
+- `OTEL_EXPORTER_OTLP_ENDPOINT` / `OTEL_EXPORTER_OTLP_HEADERS` environment variables are honored
+  by the underlying OTel exporters for endpoint/auth override without code changes.
+- `client.instrument_logging()` — bridges the Python standard library `logging` module into
+  Ledger via `opentelemetry-instrumentation-logging`, so third-party library logs are captured
+  alongside SDK-native logs.
+- `ledger.*` attribute namespace (`ledger.log_type`, `ledger.importance`, `ledger.duration_ms`,
+  `ledger.path_params`, `ledger.response_body`, `ledger.sdk_version`, `ledger.platform_version`)
+  carries Ledger-specific semantics on top of standard OTel semantic-convention attributes.
+- `ParentBased(TraceIdRatioBased(...))` sampler — standard OTel head sampling, replacing the
+  custom error-biased sampler.
+- New public re-exports in `ledger.tracing`: `Status`.
+
+### Changed
+
+- `ledger.tracing` now re-exports the real `opentelemetry.trace` API (`Span`, `SpanKind`, `Tracer`,
+  `get_current_span`, `get_tracer`) instead of Ledger's own hand-rolled tracer/span classes.
+  `SpanStatus` is now an alias for `opentelemetry.trace.StatusCode`.
+- Span/log mutation methods follow the OTel API: `span.set_attr(...)` → `span.set_attribute(...)`,
+  manual status dict → `span.set_status(StatusCode.ERROR)`, custom `record_exception` →
+  `span.record_exception(exc)` (built into OTel `Span`).
+- `client.log_endpoint(...)` now emits standard semantic-convention attributes
+  (`http.request.method`, `http.route`, `http.response.status_code`, `url.query`) plus
+  `ledger.duration_ms`/`ledger.path_params`/`ledger.response_body`, instead of a single nested
+  `attributes.endpoint` object. The Ledger server translates both stock-OTel and SDK-emitted
+  attributes into the same internal storage shape, so dashboards are unaffected.
+- `client.log_exception(...)` now relies on OTel's built-in exception recording
+  (`exception.type`/`exception.message`/`exception.stacktrace`) instead of manual traceback formatting.
+- FastAPI, Flask, and Django middlewares now create spans via the global OTel tracer
+  (`opentelemetry.trace.get_tracer(...)`) instead of a per-client custom `Tracer`; when
+  `tracing_enabled=False`, the global tracer is simply never registered and OTel's own no-op
+  tracer takes over — middlewares no longer need a separate "tracing disabled" code path.
+  Public middleware constructor signatures (`exclude_paths`, `only_registered_routes`,
+  `normalize_paths`, etc.) are unchanged.
+- `requests`/`httpx`/`sqlalchemy` integrations (`install()` / `instrument(engine)`) keep the same
+  public API, now emitting real OTel spans with W3C `traceparent` propagation via
+  `opentelemetry.propagate`.
+- `LedgerClient.shutdown()` / `shutdown_sync()` now flush and shut down the OTel providers
+  (`force_flush` + `shutdown`); `shutdown()` runs the (synchronous) OTel shutdown in a thread
+  executor so it remains safely awaitable from async code.
+- `get_metrics()` / `get_health_status()` / `is_healthy()` are simplified — the OTel SDK's batch
+  processors don't expose the same queue-depth/failure counters the old custom flusher did, so
+  these now report SDK version, uptime, and provider shutdown state rather than fabricated detail.
+
+### Removed (breaking)
+
+- Custom transport stack: `core/http_client.py`, `core/buffer.py`, `core/flusher.py`,
+  `core/threaded_flusher.py`, `core/rate_limiter.py` — replaced entirely by OTel's
+  `BatchSpanProcessor`/`BatchLogRecordProcessor` and OTLP/HTTP exporters.
+- Bespoke tracing internals: `tracing/span.py`, `tracing/tracer.py`, `tracing/sampler.py`,
+  `tracing/buffer.py`, `tracing/ids.py`, `tracing/propagation.py` — replaced by
+  `opentelemetry.trace`/`opentelemetry.propagate`.
+- `ErrorBiasedHeadSampler` and the error-bias trace-decision-hold-window — replaced by standard
+  `ParentBased(TraceIdRatioBased(...))` sampling. Error traces are no longer guaranteed to bypass
+  the sample rate.
+- `LedgerClient` constructor parameters `http_pool_size`, `rate_limit_buffer`, and
+  `trace_decision_window_ms` — removed entirely, not deprecated. Passing them now raises `TypeError`,
+  the same way the 1.6.0 custom-metrics removal worked.
+- Environment variables `LEDGER_HTTP_POOL_SIZE`, `LEDGER_RATE_LIMIT_BUFFER`,
+  `LEDGER_TRACE_DECISION_WINDOW_MS` — no longer read; setting them has no effect.
+- `compress` constructor parameter — gzip is always on for OTLP export via the exporter's own
+  `Compression.Gzip`, matching OTLP/HTTP convention; there is no way to disable it.
+- Legacy server-side ingest endpoints (`POST /api/v1/ingest/single`, `POST /api/v1/ingest/batch`,
+  `POST /api/v1/ingest/spans/batch`) — removed from the Ledger gateway in the same release. A 1.x
+  SDK talking to an updated Ledger server will fail immediately; there is no dual-endpoint
+  transition window.
+
+### Migration
+
+- **Server-side is a hard cutover.** Once the Ledger gateway is upgraded, its legacy ingest
+  endpoints are gone — every 1.x SDK installation stops ingesting the moment the server updates,
+  regardless of whether the SDK itself has been upgraded. Upgrade application dependencies to
+  `ledger-sdk>=2.0.0` before or during the server rollout, not after.
+- Drop any `http_pool_size=`, `rate_limit_buffer=`, or `trace_decision_window_ms=` arguments to
+  `LedgerClient(...)` and any corresponding `LEDGER_HTTP_POOL_SIZE`/`LEDGER_RATE_LIMIT_BUFFER`/
+  `LEDGER_TRACE_DECISION_WINDOW_MS` environment variables — these now raise `TypeError` / are
+  silently ignored, respectively.
+- Replace direct uses of `ledger.tracing.Span`/custom span methods with the standard OTel calls:
+  `span.set_attr(k, v)` → `span.set_attribute(k, v)`, `SpanStatus.ERROR` → `StatusCode.ERROR`
+  (same import path, `ledger.tracing.SpanStatus` is now an alias).
+- `client.log_info/log_warning/log_error/log_exception/log_endpoint(...)` keep their exact 1.x
+  signatures — no application code changes required for basic logging.
+- Any language can now send data to Ledger directly with its own OTel SDK: point
+  `OTEL_EXPORTER_OTLP_ENDPOINT` at the Ledger server and set
+  `OTEL_EXPORTER_OTLP_HEADERS=Authorization=Bearer ledger_<api-key>`. The enhanced features in
+  this changelog (exception capture, endpoint monitoring, log/trace correlation) remain
+  Python-SDK-specific; other languages get standard OTel trace/log ingestion.
+
 ## [1.7.1] - 2026-06-13
 
 ### Fixed
@@ -367,6 +470,7 @@
 
 - FastAPI (via LedgerMiddleware)
 
+[2.0.0]: https://github.com/JakubTuta/ledger-sdk/compare/v1.7.1...v2.0.0
 [1.7.1]: https://github.com/JakubTuta/ledger-sdk/compare/v1.7.0...v1.7.1
 [1.6.1]: https://github.com/JakubTuta/ledger-sdk/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/JakubTuta/ledger-sdk/compare/v1.5.2...v1.6.0

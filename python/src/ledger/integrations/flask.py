@@ -1,16 +1,15 @@
 import re
 import time
-from contextvars import Token
 from re import Pattern
 from typing import Any
 
+import opentelemetry.context as context_api
+import opentelemetry.trace as trace_api
 from flask import Flask, g, got_request_exception, request
 
 import ledger.core.base_middleware as base_middleware_module
 import ledger.core.client as client_module
 import ledger.integrations.common as common_module
-import ledger.tracing.span as span_module
-import ledger.tracing.tracer as tracer_module
 
 
 class LedgerMiddleware(base_middleware_module.BaseMiddleware):
@@ -67,32 +66,21 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
 
         g.ledger_start_time = time.time()
 
-        tracer = self.ledger.tracer
-        if tracer is None:
-            return
-
-        import ledger.tracing.propagation as propagation_module
-
         headers = common_module.django_meta_to_headers(request.environ)
         client_ip = request.environ.get("REMOTE_ADDR")
         user_agent = request.headers.get("User-Agent")
-        context = propagation_module.extract(headers)
 
-        span = tracer.start_span(
-            f"{request.method} {request.path}",
-            kind=span_module.SpanKind.SERVER,
-            parent=context,
+        span, span_context = common_module.start_server_span(
+            method=request.method,
+            route=request.path,
+            url=request.url,
+            headers=headers,
+            client_ip=client_ip,
+            user_agent=user_agent,
         )
-        span.set_attr("http.method", request.method)
-        span.set_attr("http.url", request.url)
-        if client_ip is not None:
-            span.set_attr("http.client_ip", client_ip)
-        if user_agent is not None:
-            span.set_attr("user_agent.original", user_agent)
 
-        token: Token[span_module.Span | None] = tracer.activate_span(span)
         g.ledger_span = span
-        g.ledger_span_token = token
+        g.ledger_context_token = context_api.attach(span_context)
 
     def _after_request(self, response: Any) -> Any:
         if not hasattr(g, "ledger_start_time"):
@@ -100,20 +88,21 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
 
         duration_ms = (time.time() - g.ledger_start_time) * 1000
 
-        tracer: tracer_module.Tracer | None = self.ledger.tracer
-        span: span_module.Span | None = getattr(g, "ledger_span", None)
-        token: Token[span_module.Span | None] | None = getattr(g, "ledger_span_token", None)
+        span: trace_api.Span | None = getattr(g, "ledger_span", None)
+        token = getattr(g, "ledger_context_token", None)
 
         path = self._get_path()
-        if path is not None and tracer is not None and span is not None:
-            span.name = f"{request.method} {path}"
-            span.set_attr("http.route", path)
-            span.set_attr("http.status_code", response.status_code)
+        if path is not None and span is not None:
+            span.update_name(f"{request.method} {path}")
+            span.set_attribute("http.route", path)
+            span.set_attribute("http.response.status_code", response.status_code)
             if response.status_code >= 500:
-                span.set_status(span_module.SpanStatus.ERROR)
+                span.set_status(trace_api.StatusCode.ERROR)
 
-        if tracer is not None and span is not None and token is not None:
-            tracer.deactivate_span(span, token)
+        if span is not None:
+            span.end()
+        if token is not None:
+            context_api.detach(token)
 
         if path is None:
             return response
@@ -142,21 +131,21 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
 
         duration_ms = (time.time() - g.ledger_start_time) * 1000
 
-        tracer: tracer_module.Tracer | None = self.ledger.tracer
-        span: span_module.Span | None = getattr(g, "ledger_span", None)
-        token: Token[span_module.Span | None] | None = getattr(g, "ledger_span_token", None)
+        span: trace_api.Span | None = getattr(g, "ledger_span", None)
+        token = getattr(g, "ledger_context_token", None)
 
-        if tracer is not None and span is not None:
+        if span is not None:
             span.record_exception(exception)
-            span.set_status(span_module.SpanStatus.ERROR)
+            span.set_status(trace_api.StatusCode.ERROR)
             path = self._get_path()
             if path is not None:
-                span.name = f"{request.method} {path}"
-                span.set_attr("http.route", path)
+                span.update_name(f"{request.method} {path}")
+                span.set_attribute("http.route", path)
+            span.end()
             if token is not None:
-                tracer.deactivate_span(span, token)
+                context_api.detach(token)
             g.ledger_span = None
-            g.ledger_span_token = None
+            g.ledger_context_token = None
 
         path = self._get_path()
         if path is None:

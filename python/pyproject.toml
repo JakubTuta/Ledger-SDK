@@ -1,7 +1,7 @@
 [project]
 name = "ledger-sdk"
-version = "1.7.1"
-description = "Production-ready observability SDK for Python web applications with FastAPI, Django, and Flask integrations"
+version = "2.0.0"
+description = "OpenTelemetry-native observability SDK for Python web applications with FastAPI, Django, and Flask integrations"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
@@ -28,9 +28,13 @@ classifiers = [
 ]
 
 dependencies = [
-    "httpx>=0.25.0",
+    "opentelemetry-api>=1.39,<2",
+    "opentelemetry-sdk>=1.39,<2",
+    "opentelemetry-exporter-otlp-proto-http>=1.39,<2",
+    "opentelemetry-instrumentation-logging>=0.60b0",
     "pydantic>=2.0.0",
     "pydantic-settings>=2.0.0",
+    "uuid6>=2024.7.10",
 ]
 
 [project.optional-dependencies]
@@ -47,8 +51,28 @@ django = [
     "django>=4.2.0",
 ]
 
+requests = [
+    "requests>=2.28.0",
+]
+
+httpx = [
+    "httpx>=0.25.0",
+]
+
+sqlalchemy = [
+    "sqlalchemy>=2.0.0",
+]
+
+loguru = [
+    "loguru>=0.7",
+]
+
+structlog = [
+    "structlog>=23",
+]
+
 all = [
-    "ledger-sdk[fastapi,flask,django]",
+    "ledger-sdk[fastapi,flask,django,requests,httpx,sqlalchemy,loguru,structlog]",
 ]
 
 dev = [
@@ -60,6 +84,8 @@ dev = [
     "ruff>=0.1.0",
     "mypy>=1.5.0",
     "httpx[http2]>=0.25.0",
+    "requests>=2.28.0",
+    "sqlalchemy>=2.0.0",
     "fastapi>=0.104.0",
     "starlette>=0.27.0",
     "uvicorn>=0.24.0",
@@ -166,6 +192,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["S101", "PLR2004", "ANN", "PT011"]
+"examples/**/*.py" = ["ANN", "T201", "S105", "S201"]
 
 [tool.mypy]
 python_version = "3.10"

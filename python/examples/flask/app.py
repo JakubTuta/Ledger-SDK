@@ -1,6 +1,7 @@
 import os
 
 from flask import Flask, jsonify, request
+
 from ledger import LedgerClient
 from ledger.integrations.flask import LedgerMiddleware
 
@@ -10,6 +11,7 @@ app.config["LEDGER_CLIENT"] = LedgerClient(
     api_key=os.getenv("LEDGER_API_KEY", "ledger_proj_1_your_api_key"),
     base_url=os.getenv("LEDGER_BASE_URL", "https://ledger-server.jtuta.cloud"),
 )
+app.config["LEDGER_CLIENT"].instrument_logging()
 
 LedgerMiddleware(app, exclude_paths=["/health"])
 

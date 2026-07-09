@@ -18,81 +18,67 @@ class TestValidator:
         }
         return Validator(constraints)
 
-    def test_validate_valid_log(self, validator):
-        log_entry = {
-            "timestamp": "2025-01-11T10:00:00Z",
-            "level": "info",
-            "log_type": "console",
-            "importance": "standard",
-            "message": "Test message",
-        }
+    def test_truncate_message_under_limit(self, validator):
+        assert validator.truncate_message("short") == "short"
 
-        validated = validator.validate_log(log_entry)
+    def test_truncate_message_over_limit(self, validator):
+        truncated = validator.truncate_message("A" * 200)
+        assert len(truncated) == 100
+        assert truncated.endswith("... [truncated]")
 
-        assert validated["level"] == "info"
-        assert validated["log_type"] == "console"
-        assert validated["importance"] == "standard"
-        assert validated["message"] == "Test message"
+    def test_truncate_error_message(self, validator):
+        truncated = validator.truncate_error_message("E" * 100)
+        assert len(truncated) == 50
 
-    def test_validate_with_invalid_level(self, validator):
-        log_entry = {
-            "level": "invalid_level",
-            "log_type": "console",
-            "importance": "standard",
-        }
+    def test_truncate_stack_trace(self, validator):
+        truncated = validator.truncate_stack_trace("S" * 1000)
+        assert len(truncated) == 500
 
-        validated = validator.validate_log(log_entry)
+    def test_truncate_error_type_under_limit(self, validator):
+        assert validator.truncate_error_type("ValueError") == "ValueError"
 
-        assert validated["level"] == "info"
+    def test_truncate_environment(self, validator):
+        truncated = validator.truncate_environment("X" * 30)
+        assert len(truncated) == 20
 
-    def test_truncate_long_message(self, validator):
-        long_message = "A" * 200
-        log_entry = {
-            "level": "info",
-            "log_type": "console",
-            "importance": "standard",
-            "message": long_message,
-        }
+    def test_truncate_release(self, validator):
+        assert validator.truncate_release("v1.2.3") == "v1.2.3"
 
-        validated = validator.validate_log(log_entry)
+    def test_normalize_log_type_valid(self, validator):
+        assert validator.normalize_log_type("exception") == "exception"
 
-        assert len(validated["message"]) == 100
-        assert validated["message"].endswith("... [truncated]")
+    def test_normalize_log_type_invalid_defaults_to_console(self, validator):
+        assert validator.normalize_log_type("not_a_type") == "console"
 
-    def test_validate_attributes(self, validator):
-        log_entry = {
-            "level": "info",
-            "log_type": "console",
-            "importance": "standard",
-            "attributes": {"user_id": 123, "action": "login"},
-        }
+    def test_normalize_log_type_none_defaults_to_console(self, validator):
+        assert validator.normalize_log_type(None) == "console"
 
-        validated = validator.validate_log(log_entry)
+    def test_normalize_importance_valid(self, validator):
+        assert validator.normalize_importance("critical") == "critical"
 
-        assert validated["attributes"]["user_id"] == 123
-        assert validated["attributes"]["action"] == "login"
+    def test_normalize_importance_invalid_defaults_to_standard(self, validator):
+        assert validator.normalize_importance("urgent") == "standard"
 
-    def test_validate_invalid_attributes(self, validator):
-        log_entry = {
-            "level": "info",
-            "log_type": "console",
-            "importance": "standard",
-            "attributes": "not_a_dict",
-        }
+    def test_validate_attributes_passthrough(self, validator):
+        attributes = {"user_id": 123, "action": "login"}
+        validated = validator.validate_attributes(attributes)
+        assert validated["user_id"] == 123
+        assert validated["action"] == "login"
 
-        validated = validator.validate_log(log_entry)
+    def test_validate_attributes_non_dict_converted(self, validator):
+        validated = validator.validate_attributes("not_a_dict")
+        assert isinstance(validated, dict)
+        assert "value" in validated
 
-        assert isinstance(validated["attributes"], dict)
-        assert "value" in validated["attributes"]
+    def test_validate_attributes_oversized_truncated(self, validator):
+        attributes = {f"key_{i}": "x" * 100 for i in range(50)}
+        validated = validator.validate_attributes(attributes)
+        assert "_truncated" in validated
 
-    def test_normalize_timestamp(self, validator):
-        log_entry = {
-            "level": "info",
-            "log_type": "console",
-            "importance": "standard",
-            "timestamp": "2025-01-11T10:00:00Z",
-        }
+    def test_validate_attributes_not_json_serializable(self, validator):
+        class Unserializable:
+            pass
 
-        validated = validator.validate_log(log_entry)
-
-        assert validated["timestamp"] == "2025-01-11T10:00:00Z"
+        attributes = {f"key_{i}": Unserializable() for i in range(50)}
+        validated = validator.validate_attributes(attributes)
+        assert validated == {}
