@@ -36,7 +36,13 @@ class LedgerConfig(BaseSettings):
     tracing_enabled: bool = Field(default=True, description="Enable distributed tracing")
 
     trace_sample_rate: float = Field(
-        default=1.0, ge=0.0, le=1.0, description="Head sample rate for tracing (0.0 to 1.0)"
+        default=0.1, ge=0.0, le=1.0, description="Head sample rate for tracing (0.0 to 1.0)"
+    )
+
+    metrics_export_interval: float = Field(
+        default=60.0,
+        gt=0,
+        description="Interval in seconds between automatic metric exports (OTel default is 60s)",
     )
 
     service_name: str = Field(default="python", description="Service name attached to all spans")

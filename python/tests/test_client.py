@@ -4,6 +4,17 @@ import ledger.core.client as client_module
 from tests.conftest import flush_client
 
 
+class _FakeMetricExporter(client_module.metrics_export.MetricExporter):
+    def export(self, *_args, **_kwargs):
+        return client_module.metrics_export.MetricExportResult.SUCCESS
+
+    def force_flush(self, *_args, **_kwargs):
+        return True
+
+    def shutdown(self, *_args, **_kwargs):
+        return None
+
+
 class TestClientValidation:
     def test_rejects_missing_api_key(self, base_url):
         with pytest.raises(ValueError, match="api_key"):
@@ -24,6 +35,68 @@ class TestClientValidation:
     def test_rejects_removed_constructor_params(self, api_key, base_url):
         with pytest.raises(TypeError):
             client_module.LedgerClient(api_key=api_key, base_url=base_url, http_pool_size=10)
+
+    def test_rejects_non_positive_metrics_export_interval(self, api_key, base_url):
+        with pytest.raises(ValueError, match="metrics_export_interval"):
+            client_module.LedgerClient(
+                api_key=api_key, base_url=base_url, metrics_export_interval=0
+            )
+
+
+class TestMetricsExportInterval:
+    def test_config_defaults(self):
+        import ledger.core.config as config_module
+
+        config = config_module.LedgerConfig()
+        assert config.trace_sample_rate == 0.1
+        assert config.metrics_export_interval == 60.0
+
+    def _make_capturing_reader_class(self, captured_kwargs: dict):
+        real_reader = client_module.metrics_export.PeriodicExportingMetricReader
+
+        class _CapturingReader(real_reader):
+            def __init__(self, exporter, **kwargs):
+                captured_kwargs.update(kwargs)
+                # Export far in the future so the background export thread never
+                # fires a real HTTP request against the fake exporter during tests.
+                kwargs["export_interval_millis"] = 3_600_000
+                super().__init__(exporter, **kwargs)
+
+        return _CapturingReader
+
+    def test_default_export_interval_passed_to_reader(self, monkeypatch, make_client):
+        captured_kwargs: dict = {}
+
+        monkeypatch.setattr(
+            client_module, "OTLPMetricExporter", lambda **_kwargs: _FakeMetricExporter()
+        )
+        monkeypatch.setattr(
+            client_module.metrics_export,
+            "PeriodicExportingMetricReader",
+            self._make_capturing_reader_class(captured_kwargs),
+        )
+
+        client = make_client()
+        client.shutdown_sync(timeout=1.0)
+
+        assert captured_kwargs["export_interval_millis"] == 60000
+
+    def test_custom_export_interval_passed_to_reader(self, monkeypatch, make_client):
+        captured_kwargs: dict = {}
+
+        monkeypatch.setattr(
+            client_module, "OTLPMetricExporter", lambda **_kwargs: _FakeMetricExporter()
+        )
+        monkeypatch.setattr(
+            client_module.metrics_export,
+            "PeriodicExportingMetricReader",
+            self._make_capturing_reader_class(captured_kwargs),
+        )
+
+        client = make_client(metrics_export_interval=7.5)
+        client.shutdown_sync(timeout=1.0)
+
+        assert captured_kwargs["export_interval_millis"] == 7500
 
 
 class TestLoggingMethods:
@@ -165,7 +238,9 @@ class TestHealthAndMetrics:
 
 class TestSpanExport:
     def test_span_exported_with_service_resource(self, make_client, span_exporter):
-        client = make_client(service_name="my-service")
+        # Force full sampling: this test asserts on export/resource behavior,
+        # not sampling, and the SDK default trace_sample_rate is 0.1.
+        client = make_client(service_name="my-service", trace_sample_rate=1.0)
         with client.tracer.start_as_current_span("op"):
             pass
         flush_client(client)

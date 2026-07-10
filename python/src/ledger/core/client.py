@@ -71,6 +71,7 @@ class LedgerClient:
         service_name: str | None = None,
         tracing_enabled: bool | None = None,
         trace_sample_rate: float | None = None,
+        metrics_export_interval: float | None = None,
         before_send: "Callable[[dict[str, Any]], dict[str, Any] | None] | None" = None,
         scrub_pii: bool = False,
     ):
@@ -96,6 +97,11 @@ class LedgerClient:
             tracing_enabled: Whether to create and export spans. Default is from config.
             trace_sample_rate: Head sample rate for tracing (0.0 to 1.0). Default is
                 from config.
+            metrics_export_interval: How often (in seconds) to automatically export
+                buffered metrics. Default is from config (60s, matching the
+                OpenTelemetry SDK default). Kept independent from `flush_interval`
+                since metrics are pre-aggregated in-process and don't need the same
+                low-latency export cadence as logs/spans.
             before_send: Optional hook called with a dict shaped
                 `{"body", "attributes", "severity_number", "severity_text"}` for every
                 log record right before export. Return a (possibly mutated) dict to
@@ -124,6 +130,11 @@ class LedgerClient:
         resolved_trace_sample_rate = (
             trace_sample_rate if trace_sample_rate is not None else config.trace_sample_rate
         )
+        resolved_metrics_export_interval = (
+            metrics_export_interval
+            if metrics_export_interval is not None
+            else config.metrics_export_interval
+        )
 
         self._validate_config(
             api_key=api_key,
@@ -132,6 +143,7 @@ class LedgerClient:
             flush_size=flush_size,
             max_buffer_size=max_buffer_size,
             http_timeout=http_timeout,
+            metrics_export_interval=resolved_metrics_export_interval,
         )
 
         self.api_key = api_key
@@ -215,7 +227,7 @@ class LedgerClient:
             metric_readers=[
                 metrics_export.PeriodicExportingMetricReader(
                     metric_exporter,
-                    export_interval_millis=flush_interval * 1000,
+                    export_interval_millis=resolved_metrics_export_interval * 1000,
                     export_timeout_millis=http_timeout * 1000,
                 )
             ],
@@ -283,6 +295,7 @@ class LedgerClient:
         flush_size: int,
         max_buffer_size: int,
         http_timeout: float,
+        metrics_export_interval: float,
     ) -> None:
         errors = []
 
@@ -307,6 +320,11 @@ class LedgerClient:
 
         if http_timeout <= 0:
             errors.append(f"http_timeout must be positive, got {http_timeout}")
+
+        if metrics_export_interval <= 0:
+            errors.append(
+                f"metrics_export_interval must be positive, got {metrics_export_interval}"
+            )
 
         if errors:
             raise ValueError("Invalid Ledger SDK configuration:\n  - " + "\n  - ".join(errors))

@@ -100,9 +100,11 @@ except Exception as e:
 ```python
 ledger = LedgerClient(
     api_key="ledger_proj_1_your_api_key",
-    flush_interval=5.0,     # Seconds between flushes
-    flush_size=1000,        # Logs before auto-flush
-    max_buffer_size=10000,  # Max logs buffered in memory
+    flush_interval=5.0,             # Seconds between log/span flushes
+    flush_size=1000,                # Logs before auto-flush
+    max_buffer_size=10000,          # Max logs buffered in memory
+    trace_sample_rate=0.1,          # Fraction of traces sampled (0.0-1.0), default 0.1
+    metrics_export_interval=60.0,   # Seconds between metric exports, default 60.0
 )
 ```
 

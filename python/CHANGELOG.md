@@ -1,3 +1,20 @@
+## [2.1.0] - 2026-07-10
+
+### Added
+
+- `metrics_export_interval` client option — controls how often buffered metrics are exported,
+  independent of `flush_interval`. Defaults to 60 seconds, matching the OpenTelemetry SDK's own
+  `PeriodicExportingMetricReader` default.
+
+### Changed
+
+- Default `trace_sample_rate` lowered from `1.0` to `0.1` (10% of traces sampled). Metrics no
+  longer reuse `flush_interval` for their export cadence — they now use the new
+  `metrics_export_interval` setting instead. Both changes protect against a single ingestion
+  signal (spans, in particular) burning through a shared daily quota and starving logs; the
+  Ledger server now also tracks logs/spans/metrics against independent daily quotas, so lowering
+  the sample rate is a cost/volume optimization, not a workaround for a shared-quota bug.
+
 ## [2.0.0] - 2026-07-07
 
 Ledger is now OpenTelemetry-native end to end. This release rebuilds the Python SDK as a thin

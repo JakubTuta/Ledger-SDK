@@ -115,8 +115,8 @@ export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer ledger_proj_1_your_api_k
 ```
 
 Then use your language's normal OTel SDK setup (`@opentelemetry/sdk-trace-node`, Go's
-`go.opentelemetry.io/otel`, Java's `opentelemetry-sdk`, etc.) — traces and logs will appear in
-your Ledger dashboard. Metrics are not ingested; Ledger supports traces and logs only.
+`go.opentelemetry.io/otel`, Java's `opentelemetry-sdk`, etc.) — traces, logs, and metrics will all
+appear in your Ledger dashboard.
 
 ## Links
 
