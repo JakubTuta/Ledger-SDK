@@ -25,6 +25,9 @@ pip install ledger-sdk
 
 ## Setup
 
+> Prefer a guided, tab-by-tab walkthrough (basic • metrics • tracing • OpenTelemetry) with
+> copy buttons? See **[ledger.jtuta.cloud/how-to-setup](https://ledger.jtuta.cloud/how-to-setup)**.
+
 ### FastAPI
 
 ```python
@@ -363,6 +366,7 @@ async def sdk_health():
 
 - [PyPI Package](https://pypi.org/project/ledger-sdk/)
 - [Dashboard](https://ledger.jtuta.cloud)
+- [Setup Guide](https://ledger.jtuta.cloud/how-to-setup)
 - [Examples](examples/)
 - [Changelog](CHANGELOG.md)
 

@@ -7,7 +7,7 @@
 [![Python SDK](https://img.shields.io/badge/python-v2.0.0-blue.svg)](https://pypi.org/project/ledger-sdk/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-[Dashboard](https://ledger.jtuta.cloud) • [Backend](https://github.com/JakubTuta/Ledger-APP) • [Web UI](https://github.com/JakubTuta/Ledger-WEB) • [API Docs](https://bump.sh/tuta-corp/doc/ledger-api/)
+[Dashboard](https://ledger.jtuta.cloud) • [Setup Guide](https://ledger.jtuta.cloud/how-to-setup) • [Backend](https://github.com/JakubTuta/Ledger-APP) • [Web UI](https://github.com/JakubTuta/Ledger-WEB) • [API Docs](https://bump.sh/tuta-corp/doc/ledger-api/)
 
 </div>
 
@@ -45,6 +45,9 @@ pip install ledger-sdk
 Supports **FastAPI**, **Django**, and **Flask**.
 
 ## Quick Start
+
+> Full step-by-step walkthrough with copyable snippets for basic setup, metrics, tracing, and
+> OpenTelemetry: **[ledger.jtuta.cloud/how-to-setup](https://ledger.jtuta.cloud/how-to-setup)**.
 
 ### FastAPI
 
@@ -102,7 +105,7 @@ app.config["LEDGER_CLIENT"] = ledger
 LedgerMiddleware(app)
 ```
 
-[Full Python SDK docs](python/) • [Get API key](https://ledger.jtuta.cloud) • [Examples](python/examples/)
+[Full Python SDK docs](python/) • [Setup guide](https://ledger.jtuta.cloud/how-to-setup) • [Get API key](https://ledger.jtuta.cloud) • [Examples](python/examples/)
 
 ## Any OpenTelemetry SDK
 
@@ -122,6 +125,7 @@ appear in your Ledger dashboard.
 
 - [PyPI Package](https://pypi.org/project/ledger-sdk/)
 - [Dashboard](https://ledger.jtuta.cloud)
+- [Setup Guide](https://ledger.jtuta.cloud/how-to-setup)
 - [API Reference](https://bump.sh/tuta-corp/doc/ledger-api/)
 
 ## License
