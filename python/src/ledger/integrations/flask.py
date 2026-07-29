@@ -107,16 +107,12 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
         if path is None:
             return response
 
-        request_info = {
-            "method": request.method,
-            "path": path,
-        }
-
-        if self.capture_query_params and request.query_string:
-            request_info["query_params"] = request.query_string.decode()
-
-        if request.view_args:
-            request_info["path_params"] = dict(request.view_args)
+        request_info = self._build_request_info(
+            method=request.method,
+            path=path,
+            query_params=request.query_string.decode() if self.capture_query_params else None,
+            path_params=dict(request.view_args) if request.view_args else None,
+        )
 
         response_body: str | None = None
         if response.status_code >= 400:
@@ -151,13 +147,12 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
         if path is None:
             return
 
-        request_info = {
-            "method": request.method,
-            "path": path,
-        }
-
-        if self.capture_query_params and request.query_string:
-            request_info["query_params"] = request.query_string.decode()
+        request_info = self._build_request_info(
+            method=request.method,
+            path=path,
+            query_params=request.query_string.decode() if self.capture_query_params else None,
+            path_params=None,
+        )
 
         self.log_exception(request_info, exception, duration_ms)
 

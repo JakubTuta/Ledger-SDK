@@ -89,11 +89,14 @@ class LedgerMiddleware(BaseHTTPMiddleware, base_middleware_module.BaseMiddleware
                     span.set_status(trace_api.StatusCode.ERROR)
 
                 if path is not None:
-                    request_info = {"method": request.method, "path": path}
-                    if self.capture_query_params and request.url.query:
-                        request_info["query_params"] = str(request.url.query)
-                    if request.path_params:
-                        request_info["path_params"] = dict(request.path_params)  # type: ignore[assignment]
+                    request_info = self._build_request_info(
+                        method=request.method,
+                        path=path,
+                        query_params=str(request.url.query)
+                        if self.capture_query_params and request.url.query
+                        else None,
+                        path_params=dict(request.path_params) if request.path_params else None,
+                    )
 
                     response_body: str | None = None
                     if response.status_code >= 400:
@@ -111,11 +114,14 @@ class LedgerMiddleware(BaseHTTPMiddleware, base_middleware_module.BaseMiddleware
                 if path is not None:
                     span.update_name(f"{request.method} {path}")
                     span.set_attribute("http.route", path)
-                    request_info = {"method": request.method, "path": path}
-                    if self.capture_query_params and request.url.query:
-                        request_info["query_params"] = str(request.url.query)
-                    if request.path_params:
-                        request_info["path_params"] = dict(request.path_params)  # type: ignore[assignment]
+                    request_info = self._build_request_info(
+                        method=request.method,
+                        path=path,
+                        query_params=str(request.url.query)
+                        if self.capture_query_params and request.url.query
+                        else None,
+                        path_params=dict(request.path_params) if request.path_params else None,
+                    )
                     self.log_exception(request_info, exc, duration_ms)
                 raise
 

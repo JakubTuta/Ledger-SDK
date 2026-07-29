@@ -52,6 +52,20 @@ class BaseMiddleware:
     def process_request_path(self, path: str) -> str | None:
         return self.url_processor.process_url(path)
 
+    @staticmethod
+    def _build_request_info(
+        method: str,
+        path: str,
+        query_params: str | None,
+        path_params: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        request_info: dict[str, Any] = {"method": method, "path": path}
+        if query_params:
+            request_info["query_params"] = query_params
+        if path_params:
+            request_info["path_params"] = path_params
+        return request_info
+
     def log_request(
         self,
         request_info: dict[str, Any],

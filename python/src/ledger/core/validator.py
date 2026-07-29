@@ -43,9 +43,6 @@ class Validator:
     def truncate_release(self, value: str) -> str:
         return self._truncate_string(value, self.max_release_length, "release")
 
-    def truncate_platform_version(self, value: str) -> str:
-        return self._truncate_string(value, self.max_platform_version_length, "platform_version")
-
     def normalize_log_type(self, value: Any) -> str:
         if isinstance(value, str) and value in self.VALID_LOG_TYPES:
             return value
