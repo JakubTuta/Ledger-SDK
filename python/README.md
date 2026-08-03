@@ -149,6 +149,46 @@ app.add_middleware(
 
 ---
 
+## Capturing the visitor's IP behind a proxy
+
+By default, the SDK only trusts the direct TCP peer address — the socket it actually received the
+connection from. If your app sits behind a reverse proxy or load balancer (nginx, an ingress
+controller, a cloud load balancer), that peer address is the proxy, not the visitor, and
+`X-Forwarded-For`/`X-Real-IP`/`CF-Connecting-IP` headers are ignored entirely. Endpoint logs will
+show the proxy's (truncated) address and country will stay empty.
+
+Two things both have to be true to fix it:
+
+1. **Your reverse proxy must forward the header.** Most don't by default. For nginx:
+
+   ```nginx
+   location / {
+       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+       proxy_pass http://your_app;
+   }
+   ```
+
+2. **`trusted_proxies` must be set to the address range your app actually receives connections
+   from** — i.e. the proxy's own address as seen by your app, not the visitor's:
+
+   ```python
+   app.add_middleware(
+       LedgerMiddleware,
+       ledger_client=ledger,
+       trusted_proxies=["10.0.0.0/8"],  # replace with your proxy's actual address range
+   )
+   ```
+
+The SDK reads `X-Forwarded-For` right-to-left and only trusts the header at all once the direct
+peer is itself inside `trusted_proxies` — a proxy appends to the header rather than rewriting it,
+so a forged entry earlier in the chain is never reached. Never set `trusted_proxies=["0.0.0.0/0"]`:
+that trusts every hop, including attacker-controlled ones, which is worse than leaving it unset.
+
+If you get the range wrong, you don't have to guess: the SDK logs a one-time warning naming the
+address it actually observed, so you can copy it straight into `trusted_proxies`.
+
+---
+
 ## Distributed Tracing
 
 Tracing is enabled automatically when you create a `LedgerClient` — it registers a real

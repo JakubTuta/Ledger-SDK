@@ -439,6 +439,7 @@ class LedgerClient:
         query_params: str | None = None,
         path_params: dict[str, Any] | None = None,
         response_body: str | None = None,
+        caller: dict[str, Any] | None = None,
     ) -> None:
         """Log an HTTP endpoint invocation.
 
@@ -450,6 +451,8 @@ class LedgerClient:
             query_params: Optional raw query string.
             path_params: Optional dict of path parameter names to their values.
             response_body: Optional response body preview for error responses (4 KB cap).
+            caller: Optional `ledger.client.*` attributes from `core.caller.describe()`,
+                merged into this log's attributes as-is.
 
         Example:
             >>> client.log_endpoint("GET", "/users/{id}", 200, 12.5, path_params={"id": "123"})
@@ -481,6 +484,9 @@ class LedgerClient:
 
         if response_body:
             attributes["ledger.response_body"] = response_body
+
+        if caller:
+            attributes.update(caller)
 
         self._log(
             level=level,

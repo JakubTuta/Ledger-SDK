@@ -213,6 +213,44 @@ class TestFlaskIntegration:
         call_kwargs = mock_client.log_endpoint.call_args.kwargs
         assert call_kwargs.get("query_params") == "page=1&limit=10"
 
+    def test_caller_metadata_attached_by_default(self, app_with_middleware):
+        app, mock_client = app_with_middleware
+        client = app.test_client()
+
+        response = client.get("/users/123", headers={"User-Agent": "curl/8.4.0"})
+
+        assert response.status_code == 200
+        call_kwargs = mock_client.log_endpoint.call_args.kwargs
+        assert call_kwargs["caller"]["ledger.client.channel"] == "api_client"
+        assert call_kwargs["caller"]["ledger.client.user_agent"] == "curl/8.4.0"
+
+    def test_caller_metadata_on_exception_path(self, app_with_middleware):
+        app, mock_client = app_with_middleware
+        client = app.test_client()
+
+        with pytest.raises(Exception):  # noqa: B017
+            client.get("/error", headers={"User-Agent": "curl/8.4.0"})
+
+        call_kwargs = mock_client.log_exception.call_args.kwargs
+        assert call_kwargs["attributes"]["ledger.client.channel"] == "api_client"
+
+    def test_capture_client_info_false_disables_caller_metadata(self, mock_ledger_client):
+        app = Flask(__name__)
+        app.config["TESTING"] = True
+
+        @app.route("/users/<int:user_id>")
+        def get_user(user_id):
+            return {"user_id": user_id}
+
+        LedgerMiddleware(app, ledger_client=mock_ledger_client, capture_client_info=False)
+        client = app.test_client()
+
+        response = client.get("/users/123")
+
+        assert response.status_code == 200
+        call_kwargs = mock_ledger_client.log_endpoint.call_args.kwargs
+        assert call_kwargs["caller"] is None
+
     def test_middleware_can_disable_normalization(self, mock_ledger_client):
         app = Flask(__name__)
         app.config["TESTING"] = True

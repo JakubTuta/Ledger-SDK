@@ -5,6 +5,8 @@ from typing import Any
 import opentelemetry.trace as trace_api
 from opentelemetry import propagate
 
+import ledger.core.caller as caller_module
+
 _TRACER_NAME = "ledger-sdk-python"
 
 
@@ -30,8 +32,9 @@ def http_server_span(
         span.set_attribute("http.request.method", method)
         span.set_attribute("http.route", route)
         span.set_attribute("url.full", url)
-        if client_ip is not None:
-            span.set_attribute("client.address", client_ip)
+        client_ip_prefix = caller_module.truncate_ip(client_ip) if client_ip is not None else None
+        if client_ip_prefix is not None:
+            span.set_attribute("client.address", client_ip_prefix)
         if user_agent is not None:
             span.set_attribute("user_agent.original", user_agent)
         yield span
@@ -60,8 +63,9 @@ def start_server_span(
     )
     span.set_attribute("http.request.method", method)
     span.set_attribute("url.full", url)
-    if client_ip is not None:
-        span.set_attribute("client.address", client_ip)
+    client_ip_prefix = caller_module.truncate_ip(client_ip) if client_ip is not None else None
+    if client_ip_prefix is not None:
+        span.set_attribute("client.address", client_ip_prefix)
     if user_agent is not None:
         span.set_attribute("user_agent.original", user_agent)
     return span, trace_api.set_span_in_context(span)

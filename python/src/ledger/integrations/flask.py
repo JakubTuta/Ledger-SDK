@@ -28,6 +28,8 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
         template_style: str = "curly",
         allowed_path_prefixes: list[str] | None = None,
         only_registered_routes: bool = True,
+        capture_client_info: bool = True,
+        trusted_proxies: list[str] | None = None,
     ):
         if ledger_client is None:
             ledger_client = app.config.get("LEDGER_CLIENT")
@@ -52,6 +54,8 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
             template_style=template_style,
             allowed_path_prefixes=allowed_path_prefixes,
             only_registered_routes=only_registered_routes,
+            capture_client_info=capture_client_info,
+            trusted_proxies=trusted_proxies,
         )
 
         self.normalize_paths = normalize_paths
@@ -81,6 +85,7 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
 
         g.ledger_span = span
         g.ledger_context_token = context_api.attach(span_context)
+        g.ledger_caller = self.describe_caller(headers, client_ip)
 
     def _after_request(self, response: Any) -> Any:
         if not hasattr(g, "ledger_start_time"):
@@ -112,6 +117,7 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
             path=path,
             query_params=request.query_string.decode() if self.capture_query_params else None,
             path_params=dict(request.view_args) if request.view_args else None,
+            caller=getattr(g, "ledger_caller", None),
         )
 
         response_body: str | None = None
@@ -152,6 +158,7 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
             path=path,
             query_params=request.query_string.decode() if self.capture_query_params else None,
             path_params=None,
+            caller=getattr(g, "ledger_caller", None),
         )
 
         self.log_exception(request_info, exception, duration_ms)

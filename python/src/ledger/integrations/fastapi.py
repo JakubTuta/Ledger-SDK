@@ -29,6 +29,8 @@ class LedgerMiddleware(BaseHTTPMiddleware, base_middleware_module.BaseMiddleware
         template_style: str = "curly",
         allowed_path_prefixes: list[str] | None = None,
         only_registered_routes: bool = True,
+        capture_client_info: bool = True,
+        trusted_proxies: list[str] | None = None,
     ):
         BaseHTTPMiddleware.__init__(self, app)
         base_middleware_module.BaseMiddleware.__init__(
@@ -45,6 +47,8 @@ class LedgerMiddleware(BaseHTTPMiddleware, base_middleware_module.BaseMiddleware
             template_style=template_style,
             allowed_path_prefixes=allowed_path_prefixes,
             only_registered_routes=only_registered_routes,
+            capture_client_info=capture_client_info,
+            trusted_proxies=trusted_proxies,
         )
 
     def _resolve_path(self, request: Request) -> str | None:
@@ -64,14 +68,16 @@ class LedgerMiddleware(BaseHTTPMiddleware, base_middleware_module.BaseMiddleware
             return await call_next(request)
 
         start_time = time.time()
+        headers = dict(request.headers)
         client_ip = request.client.host if request.client else None
-        user_agent = request.headers.get("user-agent")
+        user_agent = headers.get("user-agent")
+        caller = self.describe_caller(headers, client_ip)
 
         with common_module.http_server_span(
             method=request.method,
             route=request.url.path,
             url=str(request.url),
-            headers=dict(request.headers),
+            headers=headers,
             client_ip=client_ip,
             user_agent=user_agent,
         ) as span:
@@ -96,6 +102,7 @@ class LedgerMiddleware(BaseHTTPMiddleware, base_middleware_module.BaseMiddleware
                         if self.capture_query_params and request.url.query
                         else None,
                         path_params=dict(request.path_params) if request.path_params else None,
+                        caller=caller,
                     )
 
                     response_body: str | None = None
@@ -121,6 +128,7 @@ class LedgerMiddleware(BaseHTTPMiddleware, base_middleware_module.BaseMiddleware
                         if self.capture_query_params and request.url.query
                         else None,
                         path_params=dict(request.path_params) if request.path_params else None,
+                        caller=caller,
                     )
                     self.log_exception(request_info, exc, duration_ms)
                 raise

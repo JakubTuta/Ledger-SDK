@@ -30,6 +30,8 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
         template_style: str = "curly",
         allowed_path_prefixes: list[str] | None = None,
         only_registered_routes: bool = True,
+        capture_client_info: bool = True,
+        trusted_proxies: list[str] | None = None,
     ):
         if ledger_client is None:
             from django.conf import settings
@@ -56,6 +58,8 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
             template_style=template_style,
             allowed_path_prefixes=allowed_path_prefixes,
             only_registered_routes=only_registered_routes,
+            capture_client_info=capture_client_info,
+            trusted_proxies=trusted_proxies,
         )
         self.get_response = get_response
 
@@ -99,15 +103,17 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
 
     def _start_request_span(self, request: Any) -> Any:
         headers = common_module.django_meta_to_headers(request.META)
+        client_ip = request.META.get("REMOTE_ADDR")
         url = (
             request.build_absolute_uri() if hasattr(request, "build_absolute_uri") else request.path
         )
+        request._ledger_caller = self.describe_caller(headers, client_ip)
         return common_module.http_server_span(
             method=request.method,
             route=request.path,
             url=url,
             headers=headers,
-            client_ip=request.META.get("REMOTE_ADDR"),
+            client_ip=client_ip,
             user_agent=request.META.get("HTTP_USER_AGENT"),
         )
 
@@ -133,6 +139,7 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
                     request.META.get("QUERY_STRING") if self.capture_query_params else None
                 ),
                 path_params=self._get_path_params(request),
+                caller=getattr(request, "_ledger_caller", None),
             )
 
             response_body: str | None = None
@@ -161,6 +168,7 @@ class LedgerMiddleware(base_middleware_module.BaseMiddleware):
                     request.META.get("QUERY_STRING") if self.capture_query_params else None
                 ),
                 path_params=self._get_path_params(request),
+                caller=getattr(request, "_ledger_caller", None),
             )
             self.log_exception(request_info, exc, duration_ms)
 

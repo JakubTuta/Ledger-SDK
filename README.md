@@ -107,6 +107,19 @@ LedgerMiddleware(app)
 
 [Full Python SDK docs](python/) • [Setup guide](https://ledger.jtuta.cloud/how-to-setup) • [Get API key](https://ledger.jtuta.cloud) • [Examples](python/examples/)
 
+### Behind a reverse proxy?
+
+By default only the direct TCP peer address is trusted, so behind nginx/a load balancer, endpoint
+logs show your proxy's address, not the visitor's, until you opt in:
+
+```python
+app.add_middleware(LedgerMiddleware, ledger_client=ledger, trusted_proxies=["10.0.0.0/8"])
+```
+
+Set it to the address range your app actually receives connections from — see
+[Capturing the visitor's IP behind a proxy](python/README.md#capturing-the-visitors-ip-behind-a-proxy)
+for the full explanation and the required reverse-proxy-side config.
+
 ## Any OpenTelemetry SDK
 
 Not using Python? Point any language's stock OpenTelemetry SDK at Ledger — no Ledger package needed:

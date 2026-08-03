@@ -1,3 +1,36 @@
+## [2.2.0] - 2026-08-03
+
+### Added
+
+- **Caller/origin metadata** — inbound middlewares (FastAPI, Flask, Django) now derive and attach
+  `ledger.client.*` attributes to every endpoint log: a `channel` classification
+  (`browser_navigation` / `browser_xhr` / `api_client` / `bot` / `unknown`) from request headers,
+  a truncated IP prefix, User-Agent breakdown (browser/OS family, device type), referer origin,
+  locale, and a few other low-cardinality request signals. See `core/caller.py`.
+- `trusted_proxies` middleware option — opt-in list of IP networks (e.g. `["10.0.0.0/8"]`) whose
+  `X-Forwarded-For` / `X-Real-IP` / `CF-Connecting-IP` headers are trusted. Unset by default: only
+  the direct TCP peer address is ever used, so a reverse proxy's address is recorded instead of
+  the visitor's until this is configured. The walk is right-to-left and gated on the direct peer
+  itself being trusted, so an untrusted caller can never spoof its own address via a forged header.
+- `capture_client_info` middleware option (default `True`) to disable caller metadata capture
+  entirely.
+- One-time runtime warnings: if `X-Forwarded-For` (or similar) is seen with `trusted_proxies`
+  unset, or if the resolved address is still private/loopback after the walk, a single `logging`
+  warning names the condition and the fix so misconfiguration is diagnosable from application logs
+  without reading documentation first.
+
+### Changed
+
+- **Privacy: `client.address` span attribute is now a truncated network prefix, not a raw
+  address.** IPv4 truncates to /24, IPv6 to /48, applied at capture time before the value ever
+  leaves your process. This affects `common.py`'s `http_server_span`/`start_server_span` (used by
+  all three framework integrations) and is a deliberate behavior change: a raw client IP is
+  personal data under most privacy regimes, and Ledger's SDK no longer collects it by default.
+  `User-Agent` values longer than 512 characters are now truncated before being attached to logs
+  or spans, both to bound response size and because the OTel attribute validator's fast path
+  requires string values under 1000 characters — an unbounded UA silently forced every request
+  onto the validator's slower JSON-serializing path.
+
 ## [2.1.0] - 2026-07-10
 
 ### Added

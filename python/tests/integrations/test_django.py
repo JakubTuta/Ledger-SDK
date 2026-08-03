@@ -13,10 +13,20 @@ class MockResolverMatch:
 
 
 class MockRequest:
-    def __init__(self, path, method="GET", query_string="", route=None, route_kwargs=None):
+    def __init__(
+        self,
+        path,
+        method="GET",
+        query_string="",
+        route=None,
+        route_kwargs=None,
+        headers=None,
+    ):
         self.path = path
         self.method = method
         self.META = {"QUERY_STRING": query_string} if query_string else {}
+        if headers:
+            self.META.update(headers)
         if route:
             self.resolver_match = MockResolverMatch(route, kwargs=route_kwargs)
         else:
@@ -245,3 +255,50 @@ class TestDjangoIntegration:
         assert response.status_code == 200
         call_kwargs = mock_ledger_client.log_endpoint.call_args.kwargs
         assert call_kwargs["path_params"] == {"user_id": "42"}
+
+    def test_caller_metadata_attached_by_default(self, middleware, mock_ledger_client):
+        request = MockRequest(
+            "/users/123",
+            route="users/<int:user_id>",
+            headers={"HTTP_USER_AGENT": "curl/8.4.0"},
+        )
+        response = middleware(request)
+
+        assert response.status_code == 200
+        call_kwargs = mock_ledger_client.log_endpoint.call_args.kwargs
+        assert call_kwargs["caller"]["ledger.client.channel"] == "api_client"
+        assert call_kwargs["caller"]["ledger.client.user_agent"] == "curl/8.4.0"
+
+    def test_caller_metadata_on_exception_path(self, mock_ledger_client):
+        def get_response_with_exception(_):
+            raise ValueError("Test exception")
+
+        middleware = LedgerMiddleware(
+            get_response=get_response_with_exception, ledger_client=mock_ledger_client
+        )
+        request = MockRequest(
+            "/users/123",
+            route="users/<int:user_id>",
+            headers={"HTTP_USER_AGENT": "curl/8.4.0"},
+        )
+
+        with pytest.raises(ValueError):
+            middleware(request)
+
+        call_kwargs = mock_ledger_client.log_exception.call_args.kwargs
+        assert call_kwargs["attributes"]["ledger.client.channel"] == "api_client"
+
+    def test_capture_client_info_false_disables_caller_metadata(
+        self, mock_ledger_client, get_response
+    ):
+        middleware = LedgerMiddleware(
+            get_response=get_response,
+            ledger_client=mock_ledger_client,
+            capture_client_info=False,
+        )
+        request = MockRequest("/users/123", route="users/<int:user_id>")
+        response = middleware(request)
+
+        assert response.status_code == 200
+        call_kwargs = mock_ledger_client.log_endpoint.call_args.kwargs
+        assert call_kwargs["caller"] is None

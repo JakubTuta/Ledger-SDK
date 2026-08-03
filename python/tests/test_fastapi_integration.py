@@ -111,3 +111,34 @@ class TestFastAPIIntegration:
         assert response.status_code == 200
         call_kwargs = mock_client.log_endpoint.call_args.kwargs
         assert call_kwargs["path_params"] == {"user_id": "42"}
+
+    def test_caller_metadata_attached_by_default(self, app_with_middleware):
+        app, mock_client = app_with_middleware
+        client = TestClient(app)
+
+        response = client.get("/users/1", headers={"user-agent": "curl/8.4.0"})
+
+        assert response.status_code == 200
+        call_kwargs = mock_client.log_endpoint.call_args.kwargs
+        assert call_kwargs["caller"]["ledger.client.channel"] == "api_client"
+        assert call_kwargs["caller"]["ledger.client.user_agent"] == "curl/8.4.0"
+
+    def test_capture_client_info_false_disables_caller_metadata(self, mock_ledger_client):
+        app = FastAPI()
+
+        @app.get("/users/{user_id}")
+        async def get_user(user_id: int):
+            return {"user_id": user_id}
+
+        app.add_middleware(
+            LedgerMiddleware,
+            ledger_client=mock_ledger_client,
+            capture_client_info=False,
+        )
+        client = TestClient(app)
+
+        response = client.get("/users/1")
+
+        assert response.status_code == 200
+        call_kwargs = mock_ledger_client.log_endpoint.call_args.kwargs
+        assert call_kwargs["caller"] is None
