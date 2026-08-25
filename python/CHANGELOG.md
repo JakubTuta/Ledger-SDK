@@ -1,3 +1,31 @@
+## [2.3.0] - 2026-08-25
+
+### Changed
+
+- **Counters and histograms now export with delta aggregation temporality** instead of the
+  OpenTelemetry SDK's cumulative default. Ledger stores each exported point as a row and
+  aggregates per bucket on read, so a delta point is directly meaningful ("12 orders in this
+  5 minutes") while a cumulative one is a running total that has to be differenced first and
+  resets to zero on every process restart. Gauges are unaffected - a gauge is neither cumulative
+  nor delta.
+
+  This changes the numbers a Ledger project stores for `metric_increment()` and
+  `metric_histogram()`, and for any instrument created through `get_meter()`. It is not a
+  breaking API change - no signature moves - but a counter's stored values before and after
+  this release mean different things. Ledger's server handles both: points carry their
+  temporality from this release on, and a cumulative series is differenced reset-aware at query
+  time, so charts stay correct across the upgrade boundary and for third-party OpenTelemetry
+  SDKs that still export cumulatively.
+
+  Set `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=cumulative` to opt out.
+
+### Added
+
+- Custom metrics are now readable back: `GET /api/v1/metrics/names`,
+  `/api/v1/metrics/{name}/tags` and `/api/v1/metrics/{name}/series` expose what a project has
+  sent, and the web app charts it on a metric panel. Previously metric points were accepted,
+  counted against quota, and stored with no supported way to read them.
+
 ## [2.2.1] - 2026-08-25
 
 ### Fixed

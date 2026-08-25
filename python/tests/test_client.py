@@ -99,6 +99,68 @@ class TestMetricsExportInterval:
         assert captured_kwargs["export_interval_millis"] == 7500
 
 
+class TestMetricTemporality:
+    def test_counters_and_histograms_are_exported_as_delta(self, monkeypatch, make_client):
+        captured_kwargs: dict = {}
+
+        def _capture(**kwargs):
+            captured_kwargs.update(kwargs)
+            return _FakeMetricExporter()
+
+        monkeypatch.setattr(client_module, "OTLPMetricExporter", _capture)
+
+        client = make_client()
+        client.shutdown_sync(timeout=1.0)
+
+        preference = captured_kwargs["preferred_temporality"]
+        delta = client_module.metrics_export.AggregationTemporality.DELTA
+
+        assert preference[client_module.sdk_metrics.Counter] == delta
+        assert preference[client_module.sdk_metrics.Histogram] == delta
+
+    def test_observable_gauge_stays_cumulative(self, monkeypatch, make_client):
+        captured_kwargs: dict = {}
+
+        def _capture(**kwargs):
+            captured_kwargs.update(kwargs)
+            return _FakeMetricExporter()
+
+        monkeypatch.setattr(client_module, "OTLPMetricExporter", _capture)
+
+        client = make_client()
+        client.shutdown_sync(timeout=1.0)
+
+        preference = captured_kwargs["preferred_temporality"]
+        cumulative = client_module.metrics_export.AggregationTemporality.CUMULATIVE
+
+        assert preference[client_module.sdk_metrics.ObservableGauge] == cumulative
+
+    def test_a_counter_reports_the_increment_not_the_running_total(self):
+        """The behaviour the preference buys: each export carries only what
+        happened since the previous one, so the server can sum buckets directly
+        instead of reconstructing deltas from a cumulative series."""
+        reader = client_module.metrics_export.InMemoryMetricReader(
+            preferred_temporality=client_module._DELTA_TEMPORALITY
+        )
+        provider = client_module.sdk_metrics.MeterProvider(metric_readers=[reader])
+        counter = provider.get_meter("test").create_counter("orders")
+
+        counter.add(2)
+        first = self._only_data_point(reader.get_metrics_data())
+
+        counter.add(3)
+        second = self._only_data_point(reader.get_metrics_data())
+
+        assert first.value == 2
+        assert second.value == 3
+
+    @staticmethod
+    def _only_data_point(metrics_data):
+        resource_metric = metrics_data.resource_metrics[0]
+        metric = resource_metric.scope_metrics[0].metrics[0]
+        return metric.data.data_points[0]
+
+
 class TestLoggingMethods:
     def test_log_info_exports_expected_severity_and_body(self, make_client, log_exporter):
         client = make_client()

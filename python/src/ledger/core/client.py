@@ -30,6 +30,21 @@ import ledger.core.scrubbers as scrubbers_module
 import ledger.core.validator as validator_module
 from ledger._version import __version__
 
+# Ledger stores each exported point as a row and aggregates per bucket on read,
+# so a delta point is directly meaningful ("12 orders in this 5 minutes") while a
+# cumulative one is a running total that has to be differenced first and resets
+# to zero whenever the process restarts. The OTel SDK defaults every instrument
+# to cumulative; counters and histograms are switched to delta here so the
+# common path needs no reconstruction. Gauges are unaffected - a gauge is neither.
+_DELTA_TEMPORALITY: dict[type, "metrics_export.AggregationTemporality"] = {
+    sdk_metrics.Counter: metrics_export.AggregationTemporality.DELTA,
+    sdk_metrics.UpDownCounter: metrics_export.AggregationTemporality.DELTA,
+    sdk_metrics.Histogram: metrics_export.AggregationTemporality.DELTA,
+    sdk_metrics.ObservableCounter: metrics_export.AggregationTemporality.DELTA,
+    sdk_metrics.ObservableUpDownCounter: metrics_export.AggregationTemporality.DELTA,
+    sdk_metrics.ObservableGauge: metrics_export.AggregationTemporality.CUMULATIVE,
+}
+
 _SEVERITY_BY_LEVEL: dict[str, tuple["logs_api.SeverityNumber", str]] = {
     "debug": (logs_api.SeverityNumber.DEBUG, "DEBUG"),
     "info": (logs_api.SeverityNumber.INFO, "INFO"),
@@ -221,6 +236,7 @@ class LedgerClient:
             headers=None if otlp_headers_from_env else headers,
             timeout=http_timeout,
             compression=Compression.Gzip,
+            preferred_temporality=_DELTA_TEMPORALITY,
         )
         self._meter_provider = sdk_metrics.MeterProvider(
             resource=resource,

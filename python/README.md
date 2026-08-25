@@ -353,7 +353,14 @@ meter = ledger.get_meter("my-service")
 meter.create_counter("requests").add(1, {"route": "/health"})
 ```
 
-See the [API reference](https://bump.sh/tuta-corp/doc/ledger-api/) for querying what you send.
+Counters and histograms export with **delta** temporality, so each export carries what happened
+since the last one rather than a running total. Gauges report their current value.
+
+Chart what you send on a **Metric** panel in the web app, or read it back over the API:
+`GET /api/v1/metrics/names` lists the metric names a project has sent,
+`/api/v1/metrics/{name}/tags` lists a metric's tag keys and values, and
+`/api/v1/metrics/{name}/series` returns a bucketed time series grouped by the tags you chose.
+See the [API reference](https://bump.sh/tuta-corp/doc/ledger-api/) for the full parameter list.
 
 ---
 
