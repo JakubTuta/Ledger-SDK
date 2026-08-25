@@ -98,9 +98,11 @@ class LedgerMiddleware(BaseHTTPMiddleware, base_middleware_module.BaseMiddleware
                     request_info = self._build_request_info(
                         method=request.method,
                         path=path,
-                        query_params=str(request.url.query)
-                        if self.capture_query_params and request.url.query
-                        else None,
+                        query_params=(
+                            str(request.url.query)
+                            if self.capture_query_params and request.url.query
+                            else None
+                        ),
                         path_params=dict(request.path_params) if request.path_params else None,
                         caller=caller,
                     )
@@ -124,9 +126,11 @@ class LedgerMiddleware(BaseHTTPMiddleware, base_middleware_module.BaseMiddleware
                     request_info = self._build_request_info(
                         method=request.method,
                         path=path,
-                        query_params=str(request.url.query)
-                        if self.capture_query_params and request.url.query
-                        else None,
+                        query_params=(
+                            str(request.url.query)
+                            if self.capture_query_params and request.url.query
+                            else None
+                        ),
                         path_params=dict(request.path_params) if request.path_params else None,
                         caller=caller,
                     )
@@ -146,4 +150,8 @@ class LedgerMiddleware(BaseHTTPMiddleware, base_middleware_module.BaseMiddleware
             headers=dict(response.headers),
             media_type=response.media_type,
         )
+        # Carry the original response's background tasks over: replacing the
+        # response object would otherwise drop them silently, so a route that
+        # schedules work and then returns a 4xx/5xx would never run it.
+        buffered.background = response.background
         return buffered, preview

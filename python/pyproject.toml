@@ -1,6 +1,6 @@
 [project]
 name = "ledger-sdk"
-version = "2.2.0"
+version = "2.2.1"
 description = "OpenTelemetry-native observability SDK for Python web applications with FastAPI, Django, and Flask integrations"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -91,6 +91,8 @@ dev = [
     "uvicorn>=0.24.0",
     "django>=4.2.0",
     "flask>=2.3.0",
+    "loguru>=0.7",
+    "structlog>=23",
 ]
 
 [project.urls]

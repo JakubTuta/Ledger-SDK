@@ -1,3 +1,26 @@
+## [2.2.1] - 2026-08-25
+
+### Fixed
+
+- **Background tasks were silently dropped on error responses (FastAPI)** — to capture a response
+  body preview, `LedgerMiddleware` buffers the body of any 4xx/5xx response, which means handing
+  back a replacement `Response` object. The replacement did not carry over `response.background`,
+  so a route that scheduled a `BackgroundTask`/`BackgroundTasks` and then returned an error status
+  never ran that work. Only error responses were affected — 2xx responses are passed through
+  untouched and were never impacted.
+- **`requirements.txt` was missing every runtime dependency** — it listed only `httpx`, `pydantic`
+  and `pydantic-settings`, none of the `opentelemetry-*` packages the SDK has required since 2.0.0.
+  `pip install ledger-sdk` was never affected (that resolves `[project].dependencies` in
+  `pyproject.toml`), but installing from a source checkout — including via `requirements-dev.txt`,
+  which starts with `-r requirements.txt` — produced an environment where `import ledger` fails
+  outright. It now mirrors `pyproject.toml`.
+- **`loguru` and `structlog` integrations were never exercised in CI** — `tests/test_loguru_integration.py`
+  and `tests/test_structlog_integration.py` both guard on `pytest.importorskip`, and neither
+  package was in the `dev` extra, so both suites skipped silently on every run and two shipped
+  integrations went untested. Added to `[project.optional-dependencies].dev` and to
+  `requirements-dev.txt`, along with `requests` and `sqlalchemy` (present in the `dev` extra but
+  missing from `requirements-dev.txt`).
+
 ## [2.2.0] - 2026-08-03
 
 ### Added
@@ -520,6 +543,9 @@ preserved through a custom `LogRecordProcessor` and rewritten framework middlewa
 
 - FastAPI (via LedgerMiddleware)
 
+[2.2.1]: https://github.com/JakubTuta/ledger-sdk/compare/v2.2.0...v2.2.1
+[2.2.0]: https://github.com/JakubTuta/ledger-sdk/compare/v2.1.0...v2.2.0
+[2.1.0]: https://github.com/JakubTuta/ledger-sdk/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/JakubTuta/ledger-sdk/compare/v1.7.1...v2.0.0
 [1.7.1]: https://github.com/JakubTuta/ledger-sdk/compare/v1.7.0...v1.7.1
 [1.6.1]: https://github.com/JakubTuta/ledger-sdk/compare/v1.6.0...v1.6.1
