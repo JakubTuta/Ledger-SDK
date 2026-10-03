@@ -8,7 +8,7 @@ from ledger.integrations.flask import LedgerMiddleware
 app = Flask(__name__)
 
 app.config["LEDGER_CLIENT"] = LedgerClient(
-    api_key=os.getenv("LEDGER_API_KEY", "ledger_proj_1_your_api_key"),
+    api_key=os.getenv("LEDGER_API_KEY", "ledger_your_api_key"),
     base_url=os.getenv("LEDGER_BASE_URL", "https://ledger-server.jtuta.cloud"),
 )
 app.config["LEDGER_CLIENT"].instrument_logging()

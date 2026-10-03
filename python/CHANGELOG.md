@@ -1,3 +1,21 @@
+## [2.3.1] - 2026-10-03
+
+### Fixed
+
+- **`OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=cumulative` did not opt out of delta
+  temporality** — the 2.3.0 notes promised this opt-out, but the SDK passed its delta preference to
+  the OTLP exporter explicitly, and an explicit argument overrides the environment variable, so
+  counters and histograms stayed delta regardless. The preference is now withheld whenever the
+  variable is set, so the standard OpenTelemetry setting takes effect.
+
+### Documentation
+
+- README: documented every `LedgerClient` option with its real default (the `flush_size` example
+  showed 1000; the default is 100), the `LEDGER_*` environment variables, the `httpx` installer, and
+  that `instrument_logging()` forwards only `WARNING` and above unless `level=` is passed. Replaced
+  the `ledger_proj_1_...` placeholder (the server issues `ledger_<random>` keys) and the stale
+  version badge.
+
 ## [2.3.0] - 2026-08-25
 
 ### Changed

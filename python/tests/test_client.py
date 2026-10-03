@@ -135,6 +135,21 @@ class TestMetricTemporality:
 
         assert preference[client_module.sdk_metrics.ObservableGauge] == cumulative
 
+    def test_env_preference_opts_out_of_the_delta_default(self, monkeypatch, make_client):
+        captured_kwargs: dict = {}
+
+        def _capture(**kwargs):
+            captured_kwargs.update(kwargs)
+            return _FakeMetricExporter()
+
+        monkeypatch.setattr(client_module, "OTLPMetricExporter", _capture)
+        monkeypatch.setenv("OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE", "cumulative")
+
+        client = make_client()
+        client.shutdown_sync(timeout=1.0)
+
+        assert captured_kwargs["preferred_temporality"] is None
+
     def test_a_counter_reports_the_increment_not_the_running_total(self):
         """The behaviour the preference buys: each export carries only what
         happened since the previous one, so the server can sum buckets directly

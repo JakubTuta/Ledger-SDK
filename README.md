@@ -4,7 +4,7 @@
 
 **OpenTelemetry-native observability for developers who just want to ship.**
 
-[![Python SDK](https://img.shields.io/badge/python-v2.0.0-blue.svg)](https://pypi.org/project/ledger-sdk/)
+[![Python SDK](https://img.shields.io/pypi/v/ledger-sdk.svg)](https://pypi.org/project/ledger-sdk/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 [Dashboard](https://ledger.jtuta.cloud) • [Setup Guide](https://ledger.jtuta.cloud/how-to-setup) • [Backend](https://github.com/JakubTuta/Ledger-APP) • [Web UI](https://github.com/JakubTuta/Ledger-WEB) • [API Docs](https://bump.sh/tuta-corp/doc/ledger-api/)
@@ -58,7 +58,7 @@ from ledger import LedgerClient
 from ledger.integrations.fastapi import LedgerMiddleware
 
 ledger = LedgerClient(
-    api_key="ledger_proj_1_your_api_key",
+    api_key="ledger_your_api_key",
     base_url="https://ledger-server.jtuta.cloud"
 )
 
@@ -78,7 +78,7 @@ app.add_middleware(LedgerMiddleware, ledger_client=ledger)
 from ledger import LedgerClient
 
 LEDGER_CLIENT = LedgerClient(
-    api_key="ledger_proj_1_your_api_key",
+    api_key="ledger_your_api_key",
     base_url="https://ledger-server.jtuta.cloud"
 )
 
@@ -98,7 +98,7 @@ from ledger.integrations.flask import LedgerMiddleware
 
 app = Flask(__name__)
 ledger = LedgerClient(
-    api_key="ledger_proj_1_your_api_key",
+    api_key="ledger_your_api_key",
     base_url="https://ledger-server.jtuta.cloud"
 )
 app.config["LEDGER_CLIENT"] = ledger
@@ -127,12 +127,15 @@ Not using Python? Point any language's stock OpenTelemetry SDK at Ledger — no 
 ```bash
 export OTEL_EXPORTER_OTLP_ENDPOINT="https://ledger-server.jtuta.cloud"
 export OTEL_EXPORTER_OTLP_PROTOCOL="http/protobuf"
-export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer ledger_proj_1_your_api_key"
+export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer ledger_your_api_key"
 ```
 
 Then use your language's normal OTel SDK setup (`@opentelemetry/sdk-trace-node`, Go's
 `go.opentelemetry.io/otel`, Java's `opentelemetry-sdk`, etc.) — traces, logs, and metrics will all
-appear in your Ledger dashboard.
+appear in your Ledger dashboard, provided the SDK has an exporter configured for each signal (for
+example, Node's `@opentelemetry/exporter-trace-otlp-proto` only exports traces). Sums, gauges and
+explicit-bucket histograms are stored; exponential histograms and summaries are not supported yet
+and are skipped.
 
 ## Links
 

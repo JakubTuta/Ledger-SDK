@@ -36,6 +36,12 @@ from ledger._version import __version__
 # to zero whenever the process restarts. The OTel SDK defaults every instrument
 # to cumulative; counters and histograms are switched to delta here so the
 # common path needs no reconstruction. Gauges are unaffected - a gauge is neither.
+#
+# An explicit preferred_temporality passed to the OTLP exporter overrides the
+# standard env var, so the preference is withheld when the env var is set -
+# that is how a deployment opts back out.
+_METRICS_TEMPORALITY_ENV = "OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE"
+
 _DELTA_TEMPORALITY: dict[type, "metrics_export.AggregationTemporality"] = {
     sdk_metrics.Counter: metrics_export.AggregationTemporality.DELTA,
     sdk_metrics.UpDownCounter: metrics_export.AggregationTemporality.DELTA,
@@ -179,6 +185,7 @@ class LedgerClient:
 
         otlp_endpoint_from_env = bool(os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT"))
         otlp_headers_from_env = bool(os.environ.get("OTEL_EXPORTER_OTLP_HEADERS"))
+        otlp_temporality_from_env = bool(os.environ.get(_METRICS_TEMPORALITY_ENV))
 
         self._tracer_provider: sdk_trace.TracerProvider | None = None
 
@@ -236,7 +243,7 @@ class LedgerClient:
             headers=None if otlp_headers_from_env else headers,
             timeout=http_timeout,
             compression=Compression.Gzip,
-            preferred_temporality=_DELTA_TEMPORALITY,
+            preferred_temporality=None if otlp_temporality_from_env else _DELTA_TEMPORALITY,
         )
         self._meter_provider = sdk_metrics.MeterProvider(
             resource=resource,

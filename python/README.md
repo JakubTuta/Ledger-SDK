@@ -3,7 +3,7 @@
 **OpenTelemetry-native observability for developers who just want to ship.**
 
 [![Python Version](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![PyPI Version](https://img.shields.io/badge/pypi-v2.0.0-blue.svg)](https://pypi.org/project/ledger-sdk/)
+[![PyPI Version](https://img.shields.io/pypi/v/ledger-sdk.svg)](https://pypi.org/project/ledger-sdk/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 **Supported Frameworks:** FastAPI • Django • Flask
@@ -12,8 +12,14 @@ Since v2.0.0, `ledger-sdk` is a thin distribution of the official
 [`opentelemetry-python`](https://github.com/open-telemetry/opentelemetry-python) SDK: real
 `TracerProvider`/`LoggerProvider`, OTLP/HTTP export, standard semantic-convention attributes —
 plus Python-specific enhancements (exception capture, endpoint monitoring, log↔trace correlation,
-attribute truncation) layered on top. Upgrading from 1.x? See [CHANGELOG.md](CHANGELOG.md#200---2026-07-07)
-for the full migration guide.
+attribute truncation) layered on top.
+
+**Upgrading from 1.x?** The server no longer accepts 1.x traffic (the `/api/v1/ingest/*` endpoints
+were removed), so 1.x installs must upgrade. The constructor arguments `http_pool_size`,
+`rate_limit_buffer`, `trace_decision_window_ms` and `compress` were removed and now raise
+`TypeError`; `span.set_attr(k, v)` is now the standard `span.set_attribute(k, v)`. The logging
+methods keep their 1.x signatures. See the migration guide in
+[CHANGELOG.md](CHANGELOG.md#200---2026-07-07).
 
 ---
 
@@ -37,7 +43,7 @@ from ledger import LedgerClient
 from ledger.integrations.fastapi import LedgerMiddleware
 
 ledger = LedgerClient(
-    api_key="ledger_proj_1_your_api_key",
+    api_key="ledger_your_api_key",
     base_url="https://ledger-server.jtuta.cloud"
 )
 
@@ -58,7 +64,7 @@ import os
 from ledger import LedgerClient
 
 LEDGER_CLIENT = LedgerClient(
-    api_key=os.getenv("LEDGER_API_KEY", "ledger_proj_1_your_api_key"),
+    api_key=os.getenv("LEDGER_API_KEY", "ledger_your_api_key"),
     base_url=os.getenv("LEDGER_BASE_URL", "https://ledger-server.jtuta.cloud")
 )
 
@@ -78,7 +84,7 @@ from ledger.integrations.flask import LedgerMiddleware
 
 app = Flask(__name__)
 ledger = LedgerClient(
-    api_key="ledger_proj_1_your_api_key",
+    api_key="ledger_your_api_key",
     base_url="https://ledger-server.jtuta.cloud"
 )
 app.config["LEDGER_CLIENT"] = ledger
@@ -100,21 +106,33 @@ except Exception as e:
 
 ## Configuration
 
+Only `api_key` is required. Every other option is shown below with its default:
+
 ```python
 ledger = LedgerClient(
-    api_key="ledger_proj_1_your_api_key",
-    flush_interval=5.0,             # Seconds between log/span flushes
-    flush_size=1000,                # Logs before auto-flush
-    max_buffer_size=10000,          # Max logs buffered in memory
-    trace_sample_rate=0.1,          # Fraction of traces sampled (0.0-1.0), default 0.1
-    metrics_export_interval=60.0,   # Seconds between metric exports, default 60.0
+    api_key="ledger_your_api_key",
+    base_url="https://ledger-server.jtuta.cloud",
+    service_name="python",          # Shown as service.name on every log, span and metric
+    environment=None,               # e.g. "production"; max 20 characters
+    release=None,                   # e.g. "1.4.2"; stored as service.version
+    flush_interval=5.0,             # Seconds between log/span exports
+    flush_size=100,                 # Max records per export batch
+    max_buffer_size=10000,          # Records queued in memory before the oldest are dropped
+    http_timeout=5.0,               # Seconds before an export request times out
+    tracing_enabled=True,           # False: no spans are created or exported
+    trace_sample_rate=0.1,          # Fraction of traces sampled (0.0-1.0)
+    metrics_export_interval=60.0,   # Seconds between metric exports
+    before_send=None,               # See "before_send hook" below
+    scrub_pii=False,                # See "before_send hook" below
 )
 ```
+
+An API key always starts with `ledger_`; the client raises `ValueError` otherwise.
 
 Use environment variables in production:
 
 ```bash
-export LEDGER_API_KEY="ledger_proj_1_your_api_key"
+export LEDGER_API_KEY="ledger_your_api_key"
 export LEDGER_BASE_URL="https://ledger-server.jtuta.cloud"
 ```
 
@@ -126,6 +144,12 @@ ledger = LedgerClient(
     base_url=os.getenv("LEDGER_BASE_URL")
 )
 ```
+
+The tuning options (`base_url`, `service_name`, `flush_interval`, `flush_size`, `max_buffer_size`,
+`http_timeout`, `tracing_enabled`, `trace_sample_rate`, `metrics_export_interval`) can also be set
+with `LEDGER_<OPTION>` environment variables, e.g. `LEDGER_TRACE_SAMPLE_RATE=1.0`. They are read
+once, when `ledger` is first imported, and an explicit constructor argument always wins.
+`LEDGER_API_KEY` is **not** read automatically — pass it to the constructor as above.
 
 ## Exclude Paths
 
@@ -214,13 +238,16 @@ with tracer.start_as_current_span("process-order", attributes={"order_id": 42}) 
 
 ### Cross-service propagation
 
-Ledger uses the standard OpenTelemetry propagation API (`opentelemetry.propagate`), so
-`requests`/`httpx` calls are instrumented automatically once you call `install()`:
+Ledger uses the standard OpenTelemetry propagation API (`opentelemetry.propagate`). Each HTTP
+client has its own installer — call the one (or both) your code uses, and every outbound call
+gets a client span plus a `traceparent` header:
 
 ```python
+import ledger.integrations.httpx as ledger_httpx
 import ledger.integrations.requests as ledger_requests
 
 ledger_requests.install()  # every requests.Session.send() now propagates traceparent
+ledger_httpx.install()     # same for httpx.Client and httpx.AsyncClient
 ```
 
 To propagate manually:
@@ -244,7 +271,7 @@ with tracer.start_as_current_span("downstream-handler", context=ctx):
     ...
 ```
 
-Any log emitted inside an active span automatically includes `trace_id` and `span_id`, linking logs to traces in the dashboard.
+Any log emitted inside an active span automatically includes `trace_id` and `span_id`, linking logs to traces in the dashboard. Logs carry these ids whether or not the trace was sampled, so with the default `trace_sample_rate=0.1` only about one in ten of those ids resolves to a stored trace.
 
 ### FastAPI auto-instrumentation
 
@@ -272,6 +299,9 @@ ledger.instrument_logging()
 import logging
 logging.getLogger(__name__).warning("this reaches Ledger too")
 ```
+
+Python's root logger only emits `WARNING` and above by default, so `INFO` and `DEBUG` records never
+reach the bridge unless you lower the threshold: `ledger.instrument_logging(level=logging.INFO)`.
 
 ---
 
@@ -354,7 +384,9 @@ meter.create_counter("requests").add(1, {"route": "/health"})
 ```
 
 Counters and histograms export with **delta** temporality, so each export carries what happened
-since the last one rather than a running total. Gauges report their current value.
+since the last one rather than a running total. Gauges report their current value. To export
+cumulatively instead, set `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=cumulative`; the
+server differences cumulative series at query time, so charts stay correct either way.
 
 Chart what you send on a **Metric** panel in the web app, or read it back over the API:
 `GET /api/v1/metrics/names` lists the metric names a project has sent,
@@ -384,7 +416,7 @@ you can override the endpoint or add extra headers without touching application 
 
 ```bash
 export OTEL_EXPORTER_OTLP_ENDPOINT="https://ledger-server.jtuta.cloud"
-export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer ledger_proj_1_your_api_key"
+export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer ledger_your_api_key"
 ```
 
 ---
