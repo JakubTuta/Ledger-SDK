@@ -1,8 +1,10 @@
 import asyncio
 import json
+import logging
 import os
 import sys
 import threading
+import traceback
 from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Any
@@ -28,6 +30,7 @@ import ledger.core.config as config_module
 import ledger.core.log_processor as log_processor_module
 import ledger.core.scrubbers as scrubbers_module
 import ledger.core.validator as validator_module
+import ledger.integrations.common as common_module
 from ledger._version import __version__
 
 # Ledger stores each exported point as a row and aggregates per bucket on read,
@@ -50,6 +53,61 @@ _DELTA_TEMPORALITY: dict[type, "metrics_export.AggregationTemporality"] = {
     sdk_metrics.ObservableUpDownCounter: metrics_export.AggregationTemporality.DELTA,
     sdk_metrics.ObservableGauge: metrics_export.AggregationTemporality.CUMULATIVE,
 }
+
+
+def _exception_attributes(exception: BaseException) -> dict[str, str]:
+    """`exception.*` attributes, built the way opentelemetry-sdk 1.42+ builds them
+    for `Logger.emit(exception=...)` - an argument older supported releases
+    (1.39-1.41) reject, so the SDK never passes it."""
+    exception_class = type(exception)
+    module = exception_class.__module__
+    qualname = exception_class.__qualname__
+    return {
+        "exception.type": f"{module}.{qualname}" if module and module != "builtins" else qualname,
+        "exception.message": str(exception),
+        "exception.stacktrace": "".join(
+            traceback.format_exception(exception_class, exception, exception.__traceback__)
+        ),
+    }
+
+
+def _new_logging_handler(provider: "sdk_logs.LoggerProvider") -> logging.Handler:
+    """An OpenTelemetry stdlib logging handler that emits through `provider`.
+
+    The handler has moved from opentelemetry-sdk (where newer releases deprecate
+    it) into opentelemetry-instrumentation-logging. Older releases of that
+    package (0.60b1, for one) never attach a handler from LoggingInstrumentor,
+    and newer ones bind it to the global provider. Building it here covers every
+    supported version and keeps Ledger's logs on Ledger's provider.
+    """
+    try:
+        from opentelemetry.instrumentation.logging.handler import LoggingHandler
+    except ImportError:
+        from opentelemetry.sdk._logs import LoggingHandler
+
+    return LoggingHandler(logger_provider=provider)
+
+
+def _install_global_provider(
+    current: object, sdk_provider_type: type, install: Callable[[], None]
+) -> None:
+    """Make a Ledger provider the process-wide default unless the app already set one.
+
+    OpenTelemetry's set_*_provider calls are set-once: a later call only logs
+    "Overriding of current ... is not allowed". The client therefore never emits
+    through the global API - it uses its own providers directly - so an app with
+    its own OpenTelemetry setup (opentelemetry-instrument, another vendor, a
+    second LedgerClient) keeps it and Ledger still receives its telemetry.
+    """
+    if isinstance(current, sdk_provider_type):
+        logging_module.get_logger().info(
+            "ledger-sdk: an OpenTelemetry %s is already installed; Ledger exports "
+            "through its own provider and leaves the global one in place",
+            sdk_provider_type.__name__,
+        )
+        return
+    install()
+
 
 _SEVERITY_BY_LEVEL: dict[str, tuple["logs_api.SeverityNumber", str]] = {
     "debug": (logs_api.SeverityNumber.DEBUG, "DEBUG"),
@@ -209,8 +267,13 @@ class LedgerClient:
                     export_timeout_millis=http_timeout * 1000,
                 )
             )
-            trace_api.set_tracer_provider(self._tracer_provider)
-            self.tracer = trace_api.get_tracer("ledger-sdk-python", __version__)
+            _install_global_provider(
+                trace_api.get_tracer_provider(),
+                sdk_trace.TracerProvider,
+                lambda: trace_api.set_tracer_provider(self._tracer_provider),
+            )
+            self.tracer = self._tracer_provider.get_tracer("ledger-sdk-python", __version__)
+            common_module.use_tracer_provider(self._tracer_provider)
         else:
             self.tracer = None
 
@@ -235,8 +298,12 @@ class LedgerClient:
                 before_send=self._build_before_send(before_send, scrub_pii),
             )
         )
-        logs_api.set_logger_provider(self._logger_provider)
-        self._logger = logs_api.get_logger("ledger-sdk-python", __version__)
+        _install_global_provider(
+            logs_api.get_logger_provider(),
+            sdk_logs.LoggerProvider,
+            lambda: logs_api.set_logger_provider(self._logger_provider),
+        )
+        self._logger = self._logger_provider.get_logger("ledger-sdk-python", __version__)
 
         metric_exporter = OTLPMetricExporter(
             endpoint=None if otlp_endpoint_from_env else f"{self.base_url}/v1/metrics",
@@ -255,7 +322,11 @@ class LedgerClient:
                 )
             ],
         )
-        metrics_api.set_meter_provider(self._meter_provider)
+        _install_global_provider(
+            metrics_api.get_meter_provider(),
+            sdk_metrics.MeterProvider,
+            lambda: metrics_api.set_meter_provider(self._meter_provider),
+        )
         self._meters: dict[str, metrics_api.Meter] = {}
         self._counters: dict[str, metrics_api.Counter] = {}
         self._gauges: dict[str, metrics_api.ObservableGauge | metrics_api.Gauge] = {}
@@ -265,6 +336,7 @@ class LedgerClient:
         self._sdk_start_time = datetime.now(timezone.utc)
         self._shutdown = False
 
+        self._logging_handler: logging.Handler | None = None
         self._uncaught_capture_installed = False
         self._previous_excepthook: (
             Callable[[type[BaseException], BaseException, Any], None] | None
@@ -533,6 +605,8 @@ class LedgerClient:
         merged_attributes: dict[str, Any] = (
             self._validator.validate_attributes(dict(attributes)) if attributes else {}
         )
+        if exception is not None:
+            merged_attributes = {**_exception_attributes(exception), **merged_attributes}
         merged_attributes["ledger.log_type"] = log_type
         merged_attributes["ledger.importance"] = importance
 
@@ -547,7 +621,6 @@ class LedgerClient:
             severity_text=severity_text,
             body=message,
             attributes=merged_attributes,
-            exception=exception,
         )
 
     def is_healthy(self) -> bool:
@@ -610,6 +683,11 @@ class LedgerClient:
         any `logging.getLogger(...)` call in your application (or in
         third-party libraries) is exported to Ledger alongside SDK-native logs.
 
+        The handler is bound to this client's own logger provider, so records
+        reach Ledger even when the application installed another global
+        OpenTelemetry provider first. Calling this more than once attaches one
+        handler; shutdown removes it.
+
         Args:
             level: Minimum stdlib logging level to forward. Defaults to the root
                 logger's own effective level.
@@ -619,18 +697,13 @@ class LedgerClient:
             >>> import logging
             >>> logging.getLogger(__name__).warning("this reaches Ledger too")
         """
-        import logging as stdlib_logging
-
-        import opentelemetry.instrumentation.logging as otel_logging_instrumentation
-
-        instrumentor = otel_logging_instrumentation.LoggingInstrumentor()
-        instrumentor.instrument(
-            logger_provider=self._logger_provider,
-            set_logging_format=False,
-        )
+        root = logging.getLogger()
+        if self._logging_handler is None:
+            self._logging_handler = _new_logging_handler(self._logger_provider)
+            root.addHandler(self._logging_handler)
 
         if level is not None:
-            stdlib_logging.getLogger().setLevel(level)
+            root.setLevel(level)
 
     def capture_uncaught(self) -> None:
         """Automatically log uncaught exceptions from any thread or event loop.
@@ -789,7 +862,7 @@ class LedgerClient:
             >>> requests_counter.add(1, {"route": "/health"})
         """
         if name not in self._meters:
-            self._meters[name] = metrics_api.get_meter(name, __version__)
+            self._meters[name] = self._meter_provider.get_meter(name, __version__)
         return self._meters[name]
 
     def metric_increment(
@@ -853,7 +926,8 @@ class LedgerClient:
             raise ValueError(f"base_url must be http(s), got: {self.base_url}")
         request = urllib.request.Request(url, method="POST")  # noqa: S310
         try:
-            urllib.request.urlopen(request, timeout=timeout or self._http_timeout)  # noqa: S310
+            with urllib.request.urlopen(request, timeout=timeout or self._http_timeout):  # noqa: S310
+                pass
         except urllib.error.HTTPError as e:
             raise RuntimeError(f"Heartbeat ping failed: HTTP {e.code}") from e
         except urllib.error.URLError as e:
@@ -892,7 +966,12 @@ class LedgerClient:
         """
         timeout_millis = int(timeout * 1000)
 
+        if self._logging_handler is not None:
+            logging.getLogger().removeHandler(self._logging_handler)
+            self._logging_handler = None
+
         if self._tracer_provider is not None:
+            common_module.release_tracer_provider(self._tracer_provider)
             self._tracer_provider.force_flush(timeout_millis=timeout_millis)
             self._tracer_provider.shutdown()
 

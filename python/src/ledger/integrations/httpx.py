@@ -19,7 +19,7 @@ def _client_send_span(request: Any) -> Generator[trace_api.Span, None, None]:
         kind=trace_api.SpanKind.CLIENT,
     ) as span:
         span.set_attribute("http.request.method", request.method)
-        span.set_attribute("url.full", str(request.url))
+        span.set_attribute("url.full", common_module.url_without_query(str(request.url)))
         inject_headers: dict[str, str] = {}
         propagate.inject(inject_headers)
         for key, value in inject_headers.items():

@@ -215,6 +215,30 @@ class TestLoggingMethods:
         assert record.attributes["ledger.log_type"] == "exception"
         assert record.attributes["order_id"] == "abc"
 
+    def test_log_exception_qualifies_non_builtin_types(self, make_client, log_exporter):
+        class PaymentDeclinedError(Exception):
+            pass
+
+        client = make_client()
+        client.log_exception(PaymentDeclinedError("card expired"))
+        flush_client(client)
+
+        record = log_exporter.get_finished_logs()[0].log_record
+        assert record.attributes["exception.type"] == (
+            f"{PaymentDeclinedError.__module__}.{PaymentDeclinedError.__qualname__}"
+        )
+        assert record.attributes["exception.type"].endswith(".<locals>.PaymentDeclinedError")
+
+    def test_explicit_exception_attributes_win(self, make_client, log_exporter):
+        client = make_client()
+        client.log_exception(
+            RuntimeError("boom"), attributes={"exception.message": "redacted by caller"}
+        )
+        flush_client(client)
+
+        record = log_exporter.get_finished_logs()[0].log_record
+        assert record.attributes["exception.message"] == "redacted by caller"
+
     def test_log_exception_message_truncated(self, make_client, log_exporter):
         client = make_client()
         try:

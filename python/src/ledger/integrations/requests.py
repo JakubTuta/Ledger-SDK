@@ -25,7 +25,7 @@ def install() -> None:
             kind=trace_api.SpanKind.CLIENT,
         ) as span:
             span.set_attribute("http.request.method", request.method)
-            span.set_attribute("url.full", request.url)
+            span.set_attribute("url.full", common_module.url_without_query(request.url))
             propagate.inject(request.headers)
             try:
                 response = original_send(self, request, **kwargs)

@@ -2,6 +2,7 @@ from collections.abc import Mapping
 from re import Pattern
 from typing import Any
 
+import ledger._logging as logging_module
 import ledger.core.caller as caller_module
 import ledger.core.client as client_module
 import ledger.core.url_processor as url_processor_module
@@ -14,6 +15,11 @@ def _body_preview(body: bytes) -> str:
     if len(body) > _MAX_ERROR_RESPONSE_BODY_BYTES:
         preview += " ...[truncated]"
     return preview
+
+
+def _report_telemetry_failure(what: str) -> None:
+    """Recording a request must never fail the request it describes."""
+    logging_module.get_logger().warning("ledger-sdk: could not record the %s", what, exc_info=True)
 
 
 class BaseMiddleware:
@@ -106,16 +112,19 @@ class BaseMiddleware:
         duration_ms: float,
         response_body: str | None = None,
     ) -> None:
-        self.ledger.log_endpoint(
-            method=request_info["method"],
-            path=request_info["path"],
-            status_code=status_code,
-            duration_ms=duration_ms,
-            query_params=request_info.get("query_params"),
-            path_params=request_info.get("path_params"),
-            response_body=response_body,
-            caller=request_info.get("caller"),
-        )
+        try:
+            self.ledger.log_endpoint(
+                method=request_info["method"],
+                path=request_info["path"],
+                status_code=status_code,
+                duration_ms=duration_ms,
+                query_params=request_info.get("query_params"),
+                path_params=request_info.get("path_params"),
+                response_body=response_body,
+                caller=request_info.get("caller"),
+            )
+        except Exception:
+            _report_telemetry_failure("endpoint log")
 
     def log_exception(
         self,
@@ -138,8 +147,11 @@ class BaseMiddleware:
         if caller:
             exception_attributes.update(caller)
 
-        self.ledger.log_exception(
-            exception=exception,
-            message=message,
-            attributes=exception_attributes,
-        )
+        try:
+            self.ledger.log_exception(
+                exception=exception,
+                message=message,
+                attributes=exception_attributes,
+            )
+        except Exception:
+            _report_telemetry_failure("exception log")

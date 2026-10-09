@@ -2,7 +2,9 @@ from unittest.mock import MagicMock
 
 import pytest
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.testclient import TestClient
+from starlette.background import BackgroundTask
 
 from ledger import LedgerClient
 from ledger.integrations.fastapi import LedgerMiddleware
@@ -122,6 +124,67 @@ class TestFastAPIIntegration:
         call_kwargs = mock_client.log_endpoint.call_args.kwargs
         assert call_kwargs["caller"]["ledger.client.channel"] == "api_client"
         assert call_kwargs["caller"]["ledger.client.user_agent"] == "curl/8.4.0"
+
+    def test_error_body_preview_is_bounded_and_response_untouched(self, mock_ledger_client):
+        app = FastAPI()
+        body = "x" * 10_000
+
+        @app.get("/broken")
+        async def broken() -> PlainTextResponse:
+            return PlainTextResponse(body, status_code=500)
+
+        app.add_middleware(LedgerMiddleware, ledger_client=mock_ledger_client)
+        response = TestClient(app).get("/broken")
+
+        assert response.status_code == 500
+        assert response.text == body
+        preview = mock_ledger_client.log_endpoint.call_args.kwargs["response_body"]
+        assert preview == "x" * 4096 + " ...[truncated]"
+
+    def test_failing_endpoint_log_does_not_fail_the_request(self, mock_ledger_client):
+        app = FastAPI()
+
+        @app.get("/items")
+        async def items() -> dict:
+            return {"items": []}
+
+        mock_ledger_client.log_endpoint.side_effect = TypeError("exporter incompatibility")
+        app.add_middleware(LedgerMiddleware, ledger_client=mock_ledger_client)
+        response = TestClient(app).get("/items")
+
+        assert response.status_code == 200
+        assert response.json() == {"items": []}
+
+    def test_failing_exception_log_still_reraises_the_original_error(self, mock_ledger_client):
+        app = FastAPI()
+
+        @app.get("/crash")
+        async def crash() -> dict:
+            raise LookupError("original failure")
+
+        mock_ledger_client.log_exception.side_effect = TypeError("exporter incompatibility")
+        app.add_middleware(LedgerMiddleware, ledger_client=mock_ledger_client)
+
+        with pytest.raises(LookupError, match="original failure"):
+            TestClient(app).get("/crash")
+
+    def test_error_response_background_tasks_still_run(self, mock_ledger_client):
+        app = FastAPI()
+        ran: list[str] = []
+
+        @app.get("/rejected")
+        async def rejected() -> JSONResponse:
+            return JSONResponse(
+                {"detail": "no"},
+                status_code=400,
+                background=BackgroundTask(lambda: ran.append("cleanup")),
+            )
+
+        app.add_middleware(LedgerMiddleware, ledger_client=mock_ledger_client)
+        response = TestClient(app).get("/rejected")
+
+        assert response.status_code == 400
+        assert ran == ["cleanup"]
 
     def test_capture_client_info_false_disables_caller_metadata(self, mock_ledger_client):
         app = FastAPI()
