@@ -1,3 +1,52 @@
+## [2.4.0] - 2026-10-09
+
+### Changed
+
+- **`LedgerMiddleware` (FastAPI/Starlette) is now pure ASGI** instead of a `BaseHTTPMiddleware`
+  subclass. That wrapper added a task, a queue and a response re-wrap to every request and buffered
+  whole error responses to read a 4 KB preview. The middleware now observes the ASGI `send` stream:
+  responses pass through unchanged (streaming and server-sent-event responses keep streaming), only
+  a bounded prefix of an error body is copied for the preview, and background tasks on error
+  responses run as they should. Measured on a minimal FastAPI app: per-request overhead
+  ~674 -> ~337 us, throughput 1,081 -> 1,701 req/s. The constructor arguments are unchanged.
+- **Ledger no longer takes over an existing OpenTelemetry setup.** The global tracer, logger and
+  meter providers are set-once: if the application (or `opentelemetry-instrument`, another vendor's
+  SDK, or a second `LedgerClient`) installed one first, the client used to emit through the global
+  API and its own telemetry silently went to the other provider. The client now always emits through
+  its own providers, installs them globally only when none is present, and routes integration spans
+  (FastAPI/Flask/Django, `requests`, `httpx`) through the active client's provider.
+
+### Security
+
+- **Span URLs no longer carry query strings or fragments.** `url.full` on server spans and on
+  outgoing `requests`/`httpx` spans kept the full URL, so tokens, signed-URL signatures and
+  password-reset codes in a query string were exported with every trace. Spans now record scheme,
+  host and path only. Query parameters are still recorded on endpoint logs, and only when
+  `capture_query_params` is enabled.
+
+### Fixed
+
+- **Every log call raised `TypeError` on opentelemetry-sdk 1.39-1.41.** The SDK passed
+  `exception=` to OpenTelemetry's `Logger.emit()`, a parameter that only exists from
+  opentelemetry-sdk 1.42.0, while `pyproject.toml` allows 1.39 and up. Applications whose
+  dependencies hold OpenTelemetry below 1.42 (an `opentelemetry-proto` or exporter pin is enough)
+  got the exception from `log_info()`, `log_exception()`, the loguru/structlog bridges and every
+  request through the web-framework middleware. The `exception.type`/`exception.message`/
+  `exception.stacktrace` attributes are now built by the SDK, identically to OpenTelemetry 1.42+,
+  and CI runs the test suite against the oldest supported OpenTelemetry releases as well.
+- **A failure while recording a request no longer fails the request.** The middleware's endpoint and
+  exception logging is now isolated: an error there is reported on the `ledger` logger and the
+  response (or the application's own exception) goes through untouched.
+- **`instrument_logging()` could forward nothing.** It relied on `opentelemetry-instrumentation-logging`
+  to attach the stdlib handler, but releases of that package within the SDK's supported range
+  (0.60b1, which pip picks next to `opentelemetry-sdk` 1.39) never attach one, so standard-library
+  log records silently stayed local. Newer releases attach it bound to the *global* logger provider,
+  which sent records elsewhere whenever the application had its own OpenTelemetry setup. The client
+  now attaches its own handler, bound to its own provider, on every supported version; calling it
+  twice attaches one handler, and shutdown removes it.
+- `heartbeat()` closes its HTTP response instead of leaving the connection open until garbage
+  collection.
+
 ## [2.3.1] - 2026-10-03
 
 ### Fixed

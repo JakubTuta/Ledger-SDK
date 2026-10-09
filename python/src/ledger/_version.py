@@ -3,4 +3,4 @@ try:
 
     __version__ = version("ledger-sdk")
 except Exception:
-    __version__ = "2.3.1"
+    __version__ = "2.4.0"
